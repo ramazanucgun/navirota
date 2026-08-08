@@ -20,17 +20,17 @@ async function migrate() {
     await client.connect();
     console.log('PostgreSQL bağlantısı başarılı.');
 
-    // Veritabanının daha önce kurulup kurulmadığını kontrol et
+    // Ana schema daha önce kurulmuş mu?
     const check = await client.query(`
       SELECT EXISTS (
         SELECT 1
         FROM information_schema.tables
         WHERE table_schema = 'public'
-        AND table_name = 'plans'
+          AND table_name = 'plans'
       ) AS exists;
     `);
 
-    // Yeni veritabanıysa schema.sql'i uygula
+    // Yeni veritabanıysa ana schema'yı uygula
     if (!check.rows[0].exists) {
       const sqlPath = path.join(__dirname, 'schema.sql');
       const sql = fs.readFileSync(sqlPath, 'utf8');
@@ -40,10 +40,10 @@ async function migrate() {
       console.log('Schema başarıyla uygulandı.');
     } else {
       console.log('Mevcut veritabanı tespit edildi.');
-      console.log('Ana schema zaten mevcut, tekrar uygulanmıyor.');
+      console.log('Ana schema zaten mevcut, yeniden uygulanmıyor.');
     }
 
-    // Auth sistemi için gerekli refresh_tokens tablosunu kontrol et
+    // Eksik refresh_tokens tablosunu güvenli şekilde oluştur
     await client.query(`
       CREATE TABLE IF NOT EXISTS refresh_tokens (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -54,7 +54,7 @@ async function migrate() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
 
-      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user
+      CREATE INDEX IF NOT EXISTS idx_refresh_user
       ON refresh_tokens(user_id);
     `);
 
