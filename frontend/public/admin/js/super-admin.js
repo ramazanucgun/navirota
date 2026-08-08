@@ -41,11 +41,11 @@ function header(title, sub) { return `<div class="content__header"><div><h1>${ti
 async function renderView(view) {
   content.innerHTML = `<div class="empty-state">Yükleniyor…</div>`;
   try {
-    if (view === 'overview') return renderOverview();
-    if (view === 'malls') return renderMalls();
-    if (view === 'plans') return renderPlans();
-    if (view === 'invoices') return renderInvoices();
-    if (view === 'support') return renderSupport();
+    if (view === 'overview') return await renderOverview();
+    if (view === 'malls') return await renderMalls();
+    if (view === 'plans') return await renderPlans();
+    if (view === 'invoices') return await renderInvoices();
+    if (view === 'support') return await renderSupport();
   } catch (err) {
     content.innerHTML = `<div class="empty-state">Hata: ${escapeHtml(err.message)}</div>`;
   }

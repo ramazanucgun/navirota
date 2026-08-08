@@ -1,7 +1,7 @@
 // frontend/public/admin/js/mall-admin.js
 'use strict';
 
-let session = AdminAuth.guard(['mall_admin', 'super_admin']);
+let session = AdminAuth.guard(['mall_admin']);
 const content = document.getElementById('content');
 
 function boot() {
@@ -25,7 +25,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   errBox.hidden = true;
   try {
     const data = await AdminAuth.login(email, password);
-    if (!['mall_admin', 'super_admin'].includes(data.user.role)) {
+    if (data.user.role !== 'mall_admin') {
       AdminAuth.clearSession();
       throw new Error('Bu panel yalnızca AVM yöneticileri içindir.');
     }
@@ -49,16 +49,16 @@ document.querySelectorAll('.nav-item').forEach((item) => {
 async function renderView(view) {
   content.innerHTML = `<div class="empty-state">Yükleniyor…</div>`;
   try {
-    if (view === 'overview') return renderOverview();
-    if (view === 'floors') return renderFloors();
-    if (view === 'stores') return renderStores();
-    if (view === 'campaigns') return renderCampaigns();
-    if (view === 'ads') return renderAds();
-    if (view === 'popups') return renderPopups();
-    if (view === 'users') return renderUsers();
-    if (view === 'signage') return renderSignage();
-    if (view === 'integrations') return renderIntegrations();
-    if (view === 'support') return renderSupport();
+    if (view === 'overview') return await renderOverview();
+    if (view === 'floors') return await renderFloors();
+    if (view === 'stores') return await renderStores();
+    if (view === 'campaigns') return await renderCampaigns();
+    if (view === 'ads') return await renderAds();
+    if (view === 'popups') return await renderPopups();
+    if (view === 'users') return await renderUsers();
+    if (view === 'signage') return await renderSignage();
+    if (view === 'integrations') return await renderIntegrations();
+    if (view === 'support') return await renderSupport();
   } catch (err) {
     content.innerHTML = `<div class="empty-state">Hata: ${escapeHtml(err.message)}</div>`;
   }

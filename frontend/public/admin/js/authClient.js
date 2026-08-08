@@ -3,7 +3,16 @@
 'use strict';
 
 const AdminAuth = (() => {
-  const STORAGE_KEY = 'sw_admin_session';
+  // ÖNEMLİ: Üç panel de (AVM/Mağaza/Super Admin) aynı alan adında çalıştığı
+  // için localStorage anahtarı sayfa yoluna göre isim uzayına ayrılır.
+  // Aksi halde bir panelde açılan oturum, aynı tarayıcıda başka bir panel
+  // sekmesi açıldığında yanlışlıkla "sızar" ve rol uyuşmazlığı hatalarına
+  // yol açar (örn. süper admin oturumunun AVM panelinde kullanılmaya
+  // çalışılması gibi).
+  const PANEL_NAMESPACE = location.pathname.includes('super-admin') ? 'super'
+    : location.pathname.includes('store-panel') ? 'store'
+    : 'mall';
+  const STORAGE_KEY = `sw_admin_session_${PANEL_NAMESPACE}`;
 
   function getSession() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch { return null; }
