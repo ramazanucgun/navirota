@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SmartWay AVM — Super Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/admin/css/admin.css" />
+</head>
+<body>
+
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <div class="mark">SW</div>
+    <h1>Super Admin</h1>
+    <p class="sub">SmartWay AVM platform operasyonu — çoklu AVM, plan, fatura, destek.</p>
+    <div id="loginError" class="login-error" hidden></div>
+    <form id="loginForm">
+      <div class="field"><label>E-posta</label><input type="email" id="loginEmail" required /></div>
+      <div class="field"><label>Şifre</label><input type="password" id="loginPassword" required /></div>
+      <button class="btn btn--primary btn--block" type="submit">Giriş Yap</button>
+    </form>
+    <div class="demo-hint">Demo: <strong>super@smartwayavm.com</strong> / <strong>SuperAdmin123!</strong></div>
+  </div>
+</div>
+
+<div id="shell" class="shell" hidden>
+  <aside class="sidebar">
+    <div class="sidebar__brand"><div class="mark">SW</div><span class="sidebar__brand-text">Super Admin</span></div>
+    <div class="sidebar__mall">SmartWay Platformu</div>
+    <nav class="nav-group" id="navGroup">
+      <div class="nav-item active" data-view="overview">📊 Platform Özeti</div>
+      <div class="nav-item" data-view="malls">🏢 AVM'ler</div>
+      <div class="nav-item" data-view="plans">📦 Paketler</div>
+      <div class="nav-item" data-view="invoices">🧾 Faturalar</div>
+      <div class="nav-item" data-view="support">🛟 Destek Talepleri</div>
+    </nav>
+    <div class="sidebar__footer">
+      <div class="sidebar__user" id="userLabel">—</div>
+      <button class="btn btn--ghost sidebar__logout" id="logoutBtn" style="color:#f6f3ec;border-color:rgba(255,255,255,0.18)">Çıkış Yap</button>
+    </div>
+  </aside>
+  <main class="content" id="content"></main>
+</div>
+
+<script src="/admin/js/authClient.js"></script>
+<script src="/admin/js/super-admin.js"></script>
+</body>
+</html>

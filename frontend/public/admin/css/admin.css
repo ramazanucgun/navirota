@@ -1,0 +1,161 @@
+/* ============================================================
+   SmartWay AVM — Admin Panelleri (AVM / Mağaza / Super Admin)
+   Aynı marka dili (Fraunces + Sora, bakır/altın vurgu) ama
+   dashboard bağlamına uygun daha yoğun, veri-öncelikli düzen.
+   ============================================================ */
+:root {
+  --paper: #F6F3EC;
+  --paper-raised: #FFFDF8;
+  --ink: #17140F;
+  --ink-soft: #59503f;
+  --line: rgba(23, 20, 15, 0.10);
+  --line-strong: rgba(23, 20, 15, 0.16);
+  --copper: #B5652C;
+  --copper-deep: #8C4A1D;
+  --gold: #C79A3E;
+  --gold-soft: rgba(199, 154, 62, 0.14);
+  --success: #4C7A5E;
+  --success-soft: rgba(76,122,94,0.12);
+  --danger: #B4432E;
+  --danger-soft: rgba(180,67,46,0.1);
+  --sidebar-bg: #17140F;
+  --sidebar-fg: rgba(246,243,236,0.72);
+  --shadow-sm: 0 4px 14px -6px rgba(23,20,15,0.18);
+  --shadow-md: 0 14px 34px -14px rgba(23,20,15,0.28);
+  --radius-lg: 20px; --radius-md: 14px; --radius-sm: 10px;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Sora', -apple-system, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font-family: inherit; }
+h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 500; margin: 0; }
+a { color: inherit; }
+::selection { background: var(--gold-soft); }
+
+/* ---------- Giriş ekranı ---------- */
+.login-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 20% 20%, rgba(199,154,62,0.12), transparent 55%), var(--paper);
+  padding: 24px;
+}
+.login-card {
+  width: 100%; max-width: 380px; background: var(--paper-raised);
+  border: 1px solid var(--line); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md); padding: 36px 32px;
+}
+.login-card .mark {
+  width: 46px; height: 46px; border-radius: 12px; background: var(--ink); color: var(--gold);
+  display: flex; align-items: center; justify-content: center; font-family: var(--font-display);
+  margin-bottom: 18px; font-size: 16px;
+}
+.login-card h1 { font-size: 24px; margin-bottom: 6px; }
+.login-card p.sub { color: var(--ink-soft); font-size: 13.5px; margin: 0 0 24px; }
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; }
+.field input, .field select, .field textarea {
+  width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--line-strong);
+  background: var(--paper); font-size: 14px; color: var(--ink); outline: none;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--copper); }
+.login-error { background: var(--danger-soft); color: var(--danger); padding: 10px 13px; border-radius: 10px; font-size: 13px; margin-bottom: 14px; }
+.demo-hint { margin-top: 18px; font-size: 12px; color: var(--ink-soft); background: var(--paper); padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--line-strong); }
+
+/* ---------- Genel düğmeler ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: none; border-radius: 10px; padding: 11px 18px; font-weight: 600; font-size: 13.5px;
+  cursor: pointer; transition: transform .12s ease;
+}
+.btn:active { transform: scale(0.97); }
+.btn--primary { background: var(--ink); color: var(--gold); }
+.btn--gold { background: linear-gradient(135deg, var(--gold), var(--copper)); color: #1a1207; }
+.btn--ghost { background: transparent; border: 1px solid var(--line-strong); color: var(--ink); }
+.btn--danger { background: var(--danger-soft); color: var(--danger); }
+.btn--block { width: 100%; }
+.btn--sm { padding: 7px 12px; font-size: 12.5px; border-radius: 8px; }
+
+/* ---------- Shell (sidebar + content) ---------- */
+.shell { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 240px; flex-shrink: 0; background: var(--sidebar-bg); color: var(--sidebar-fg);
+  padding: 22px 16px; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
+}
+.sidebar__brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 22px; }
+.sidebar__brand .mark { width: 34px; height: 34px; border-radius: 9px; background: rgba(199,154,62,0.16); color: var(--gold); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 13px; }
+.sidebar__brand-text { font-family: var(--font-display); color: #fff; font-size: 15px; }
+.sidebar__mall { font-size: 11px; color: rgba(246,243,236,0.45); padding: 0 8px 18px; }
+.nav-group { margin-bottom: 4px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px;
+  font-size: 13.5px; font-weight: 500; cursor: pointer; color: var(--sidebar-fg);
+  margin-bottom: 2px;
+}
+.nav-item:hover { background: rgba(255,255,255,0.05); }
+.nav-item.active { background: rgba(199,154,62,0.14); color: var(--gold); font-weight: 600; }
+.sidebar__footer { margin-top: auto; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); }
+.sidebar__user { font-size: 12.5px; color: rgba(246,243,236,0.55); padding: 0 8px 10px; }
+.sidebar__logout { width: 100%; }
+
+.content { flex: 1; min-width: 0; padding: 28px 34px 60px; }
+.content__header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 14px; }
+.content__header h1 { font-size: 26px; }
+.content__header p.sub { color: var(--ink-soft); font-size: 13.5px; margin-top: 4px; }
+
+/* ---------- Kartlar / grid ---------- */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 26px; }
+.stat-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 18px 20px; box-shadow: var(--shadow-sm); }
+.stat-card__label { font-size: 12px; color: var(--ink-soft); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.stat-card__value { font-family: var(--font-display); font-size: 30px; margin-top: 6px; }
+.stat-card__delta { font-size: 12px; margin-top: 4px; color: var(--success); }
+
+.panel { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); margin-bottom: 22px; overflow: hidden; }
+.panel__head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--line); flex-wrap: wrap; gap: 10px; }
+.panel__head h3 { font-size: 17px; }
+.panel__body { padding: 20px 22px; }
+
+table.data-table { width: 100%; border-collapse: collapse; }
+.data-table th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-soft); padding: 10px 22px; border-bottom: 1px solid var(--line); }
+.data-table td { padding: 13px 22px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: var(--gold-soft); }
+
+.badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 700; }
+.badge--success { background: var(--success-soft); color: var(--success); }
+.badge--danger { background: var(--danger-soft); color: var(--danger); }
+.badge--gold { background: var(--gold-soft); color: var(--copper-deep); }
+.badge--neutral { background: var(--line); color: var(--ink-soft); }
+
+.empty-state { padding: 40px 20px; text-align: center; color: var(--ink-soft); font-size: 13.5px; }
+
+/* ---------- Form ızgarası ---------- */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid--full { grid-column: 1 / -1; }
+@media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Modal (basit) ---------- */
+.modal-scrim { position: fixed; inset: 0; background: rgba(23,20,15,0.5); display: flex; align-items: center; justify-content: center; z-index: 500; padding: 20px; }
+.modal-card { background: var(--paper-raised); border-radius: var(--radius-lg); width: 100%; max-width: 480px; max-height: 86vh; overflow-y: auto; box-shadow: var(--shadow-md); }
+.modal-card__head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+.modal-card__body { padding: 20px 22px; }
+
+/* ---------- Toast ---------- */
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 10px; font-size: 13.5px; box-shadow: var(--shadow-md); z-index: 999; animation: toastIn .25s ease both; }
+.toast.error { background: var(--danger); }
+@keyframes toastIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: none; } }
+
+/* ---------- Basit çubuk grafik (saatlik yoğunluk) ---------- */
+.bar-chart { display: flex; align-items: flex-end; gap: 3px; height: 120px; }
+.bar-chart__bar { flex: 1; background: linear-gradient(180deg, var(--gold), var(--copper)); border-radius: 3px 3px 0 0; min-height: 2px; position: relative; }
+.bar-chart__label { display: flex; gap: 3px; margin-top: 6px; }
+.bar-chart__label span { flex: 1; text-align: center; font-size: 9px; color: var(--ink-soft); }
+
+.mobile-topbar { display: none; }
+@media (max-width: 900px) {
+  .shell { flex-direction: column; }
+  .sidebar { width: 100%; height: auto; position: static; flex-direction: row; align-items: center; overflow-x: auto; padding: 12px; }
+  .sidebar__brand, .sidebar__mall, .sidebar__footer { display: none; }
+  .nav-group { display: flex; gap: 4px; }
+  .content { padding: 20px 18px 40px; }
+}
+:focus-visible { outline: 2px solid var(--copper); outline-offset: 2px; }

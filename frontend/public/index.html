@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>SmartWay AVM — Yönlendirme</title>
+<meta name="description" content="QR tabanlı akıllı AVM yönlendirme ve rota sistemi" />
+<meta name="theme-color" content="#141311" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" href="/icons/icon-192.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+<!-- AVM tam ekran popup (duyuru/etkinlik) -->
+<div id="mallPopup" class="mall-popup" hidden>
+  <div class="mall-popup__scrim"></div>
+  <div class="mall-popup__card">
+    <button class="mall-popup__close" id="mallPopupClose" aria-label="Kapat">✕</button>
+    <div class="mall-popup__media" id="mallPopupMedia"></div>
+    <div class="mall-popup__body">
+      <h2 id="mallPopupTitle"></h2>
+      <a id="mallPopupCta" class="btn btn--gold" href="#" target="_blank" rel="noopener">Detayları Gör</a>
+    </div>
+  </div>
+</div>
+
+<!-- QR tarama simülasyonu (gerçek kamera yerine demo giriş) -->
+<div id="qrOverlay" class="qr-overlay">
+  <div class="qr-overlay__inner">
+    <p class="eyebrow">SmartWay AVM</p>
+    <h1 class="qr-overlay__title">Konumunuzu<br/>okutun.</h1>
+    <p class="qr-overlay__sub">Demo ortamında kamera yerine, koridorunuzdaki QR etiketinin kodunu seçin.</p>
+    <div class="qr-overlay__grid" id="qrDemoGrid"></div>
+    <button class="qr-overlay__scan" id="qrScanBtn">
+      <span class="qr-overlay__scan-frame"></span>
+      QR okutuluyor…
+    </button>
+  </div>
+</div>
+
+<div id="app" class="app" hidden>
+
+  <!-- ÜST BAR -->
+  <header class="topbar">
+    <div class="topbar__brand">
+      <span class="topbar__mark">SW</span>
+      <div>
+        <p class="topbar__mall" id="mallName">—</p>
+        <p class="topbar__loc" id="currentLocLabel">Konum belirleniyor…</p>
+      </div>
+    </div>
+    <div class="topbar__actions">
+      <button class="icon-btn" id="pdrBtn" title="Canlı Konum (deneysel)">📍</button>
+      <button class="icon-btn" id="parkingBtn" title="Aracımı nereye park ettim?">🅿️</button>
+      <button class="icon-btn" id="langBtn" title="Dil">TR</button>
+    </div>
+  </header>
+
+  <!-- ARAMA -->
+  <section class="search-zone">
+    <div class="search-box">
+      <svg class="search-box__icon" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M20 20L16.5 16.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <input id="searchInput" type="text" placeholder="Mağaza ara, ya da ‘kahve içmek istiyorum’ yazın…" autocomplete="off" />
+    </div>
+    <div class="category-scroll" id="categoryScroll"></div>
+    <div class="results-panel" id="resultsPanel" hidden></div>
+  </section>
+
+  <!-- KAT SEKMELERİ + HARİTA -->
+  <section class="map-zone">
+    <div class="floor-tabs" id="floorTabs"></div>
+    <div class="map-canvas-wrap">
+      <svg id="mapSvg" class="map-canvas" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="map-controls">
+        <button id="zoomIn" class="map-controls__btn" aria-label="Yakınlaştır">+</button>
+        <button id="zoomOut" class="map-controls__btn" aria-label="Uzaklaştır">–</button>
+        <button id="zoomReset" class="map-controls__btn map-controls__btn--reset" aria-label="Sıfırla">⟲</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROTA PANELİ (alt sheet) -->
+  <section class="route-sheet" id="routeSheet" hidden>
+    <div class="route-sheet__handle"></div>
+    <div class="route-sheet__head">
+      <div>
+        <p class="eyebrow" id="routeStoreLabel">Rota</p>
+        <h3 id="routeStoreName">—</h3>
+      </div>
+      <button class="icon-btn" id="routeClose">✕</button>
+    </div>
+    <div class="route-prefs" id="routePrefs">
+      <button class="chip chip--active" data-pref="shortest">En Kısa</button>
+      <button class="chip" data-pref="accessible">Engelli Dostu</button>
+      <button class="chip" data-pref="least_stairs">Az Merdiven</button>
+    </div>
+    <div class="route-steps" id="routeSteps"></div>
+    <div class="route-sheet__ad" id="routeCompleteAd" hidden></div>
+  </section>
+
+  <!-- MAĞAZA DETAY MODAL -->
+  <div class="store-modal" id="storeModal" hidden>
+    <div class="store-modal__scrim" id="storeModalScrim"></div>
+    <div class="store-modal__sheet">
+      <div class="store-modal__cover" id="storeCover">
+        <button class="icon-btn store-modal__close" id="storeModalClose">✕</button>
+      </div>
+      <div class="store-modal__body">
+        <div class="store-modal__head">
+          <img id="storeLogo" class="store-modal__logo" alt="" />
+          <div>
+            <h2 id="storeName">—</h2>
+            <p id="storeFloorLabel" class="muted"></p>
+          </div>
+        </div>
+        <div id="storeCampaigns" class="store-campaigns"></div>
+        <p id="storeDescription" class="store-desc"></p>
+        <div class="store-meta" id="storeMeta"></div>
+        <button class="btn btn--dark btn--block" id="storeRouteBtn">Bu Mağazaya Git →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANA REKLAM ALANI -->
+  <div class="ad-slot ad-slot--home" id="homeAd" hidden></div>
+
+</div>
+
+<script src="/js/routeEngine.js"></script>
+<script src="/js/pdr.js"></script>
+<script src="/js/map.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
