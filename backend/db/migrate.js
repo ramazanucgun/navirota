@@ -20,7 +20,7 @@ async function migrate() {
     await client.connect();
     console.log('PostgreSQL bağlantısı başarılı.');
 
-    // Veritabanı daha önce kurulmuş mu kontrol et
+    // Veritabanının daha önce kurulup kurulmadığını kontrol et
     const check = await client.query(`
       SELECT EXISTS (
         SELECT 1
@@ -30,18 +30,35 @@ async function migrate() {
       ) AS exists;
     `);
 
-    if (check.rows[0].exists) {
+    // Yeni veritabanıysa schema.sql'i uygula
+    if (!check.rows[0].exists) {
+      const sqlPath = path.join(__dirname, 'schema.sql');
+      const sql = fs.readFileSync(sqlPath, 'utf8');
+
+      await client.query(sql);
+
+      console.log('Schema başarıyla uygulandı.');
+    } else {
       console.log('Mevcut veritabanı tespit edildi.');
-      console.log('Schema zaten uygulanmış, migration atlanıyor.');
-      return;
+      console.log('Ana schema zaten mevcut, tekrar uygulanmıyor.');
     }
 
-    const sqlPath = path.join(__dirname, 'schema.sql');
-    const sql = fs.readFileSync(sqlPath, 'utf8');
+    // Auth sistemi için gerekli refresh_tokens tablosunu kontrol et
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at TIMESTAMPTZ NOT NULL,
+        revoked_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
 
-    await client.query(sql);
+      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user
+      ON refresh_tokens(user_id);
+    `);
 
-    console.log('Schema başarıyla uygulandı.');
+    console.log('refresh_tokens tablosu kontrol edildi.');
   } finally {
     await client.end();
   }
