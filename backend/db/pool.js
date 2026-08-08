@@ -25,4 +25,10 @@ async function query(text, params = []) {
   return res;
 }
 
-module.exports = { pool, query };
+// NOT: readQuery, routes/admin/analytics.js gibi dosyalarda kullanılıyor.
+// Şu an ayrı bir okuma replikası (read replica) yok; bu yüzden query'nin
+// birebir aynısına yönlendirilir. İleride bir replika eklenirse yalnızca
+// burası değişir, çağıran kodun hiçbiri değişmez.
+const readQuery = query;
+
+module.exports = { pool, query, readQuery };

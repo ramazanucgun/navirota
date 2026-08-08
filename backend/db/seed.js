@@ -2,7 +2,12 @@
 // Demo amaçlı: "Terrace AVM" adında tek bir mall, 2 kat, ~8 mağaza,
 // aralarında koridor node/edge grafiği ve birkaç kampanya oluşturur.
 // Çalıştırma: node db/seed.js  (DATABASE_URL / PG* env değişkenleri gerekir)
+//
+// İDEMPOTENT: Bu script, Shell erişimi olmayan ortamlarda (örn. Render
+// ücretsiz plan) Build Command'a eklenip her deploy'da güvenle tekrar
+// çalıştırılabilecek şekilde yazılmıştır — var olan kayıtları çoğaltmaz.
 
+require('dotenv').config();
 const { query, pool } = require('./pool');
 
 async function seed() {
@@ -102,6 +107,13 @@ async function seed() {
     ['K1-C2', 'K1-STORE-MEDIAMARKT', 1], ['K1-C2', 'K1-STORE-MANGO', 1],
   ];
   for (const [from, to, weight, edgeType] of edgeDefs) {
+    // Bu script Build Command üzerinden her deploy'da çalışabileceğinden,
+    // aynı kenarın tekrar tekrar eklenmemesi için önce varlığı kontrol edilir.
+    const exists = await query(
+      `SELECT 1 FROM nav_edges WHERE from_node_id = $1 AND to_node_id = $2`,
+      [idMap[from], idMap[to]]
+    );
+    if (exists.rows.length) continue;
     await query(
       `INSERT INTO nav_edges (from_node_id, to_node_id, weight, edge_type, bidirectional)
        VALUES ($1, $2, $3, $4, true)`,
@@ -155,16 +167,31 @@ async function seed() {
     );
   }
 
-  await query(
-    `INSERT INTO campaigns (store_id, title, discount_percent, badge, starts_at, ends_at)
-     VALUES ($1, 'Sezon Sonu İndirimi', 50, 'indirim', now() - interval '1 day', now() + interval '30 day')`,
+  // Bu iki kampanya da Build Command üzerinden tekrar tekrar çalıştırılabileceğinden
+  // (Shell kapalıyken migration/seed'i güncel tutmanın tek yolu budur), aynı
+  // başlıkla ikinci kez eklenmesini önlemek için önce varlık kontrolü yapılır.
+  const lcwCampaignExists = await query(
+    `SELECT 1 FROM campaigns WHERE store_id = $1 AND title = 'Sezon Sonu İndirimi'`,
     [storeIds['lc-waikiki']]
   );
-  await query(
-    `INSERT INTO campaigns (store_id, title, badge, starts_at, ends_at)
-     VALUES ($1, '2. Kahve Hediye', 'hediye', now() - interval '1 day', now() + interval '30 day')`,
+  if (!lcwCampaignExists.rows.length) {
+    await query(
+      `INSERT INTO campaigns (store_id, title, discount_percent, badge, starts_at, ends_at)
+       VALUES ($1, 'Sezon Sonu İndirimi', 50, 'indirim', now() - interval '1 day', now() + interval '30 day')`,
+      [storeIds['lc-waikiki']]
+    );
+  }
+  const sbxCampaignExists = await query(
+    `SELECT 1 FROM campaigns WHERE store_id = $1 AND title = '2. Kahve Hediye'`,
     [storeIds['starbucks']]
   );
+  if (!sbxCampaignExists.rows.length) {
+    await query(
+      `INSERT INTO campaigns (store_id, title, badge, starts_at, ends_at)
+       VALUES ($1, '2. Kahve Hediye', 'hediye', now() - interval '1 day', now() + interval '30 day')`,
+      [storeIds['starbucks']]
+    );
+  }
 
   console.log('Seed tamamlandı. Mall slug: terrace | Demo QR: K0-A-05');
 
