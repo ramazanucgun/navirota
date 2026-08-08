@@ -28,6 +28,12 @@
 
 * { box-sizing: border-box; }
 
+/* KRİTİK: Bkz. admin/css/admin.css'teki aynı isimli kural için açıklama —
+   `hidden` özniteliğiyle birlikte `display: flex` tanımlayan sınıflar
+   (.mall-popup, .route-sheet, .store-modal vb.) JS tarafından gizlense
+   bile görünür kalabilir. Bu kural bunu kalıcı olarak önler. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
