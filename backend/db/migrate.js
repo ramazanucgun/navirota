@@ -9,9 +9,6 @@ async function migrate() {
     throw new Error('DATABASE_URL bulunamadı.');
   }
 
-  const sqlPath = path.join(__dirname, 'schema.sql');
-  const sql = fs.readFileSync(sqlPath, 'utf8');
-
   const client = new Client({
     connectionString: process.env.DATABASE_URL,
     ssl: {
@@ -22,6 +19,25 @@ async function migrate() {
   try {
     await client.connect();
     console.log('PostgreSQL bağlantısı başarılı.');
+
+    // Veritabanı daha önce kurulmuş mu kontrol et
+    const check = await client.query(`
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'plans'
+      ) AS exists;
+    `);
+
+    if (check.rows[0].exists) {
+      console.log('Mevcut veritabanı tespit edildi.');
+      console.log('Schema zaten uygulanmış, migration atlanıyor.');
+      return;
+    }
+
+    const sqlPath = path.join(__dirname, 'schema.sql');
+    const sql = fs.readFileSync(sqlPath, 'utf8');
 
     await client.query(sql);
 
