@@ -10,6 +10,17 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 
+// Güvenlik ağı: beklenmeyen bir yakalanmamış hata/promise reddi (tıpkı
+// trust-proxy hatasında olduğu gibi) modern Node sürümlerinde tüm süreci
+// sessizce sonlandırabilir. Bunun yerine hatayı görünür şekilde loglayıp
+// süreci ayakta tutuyoruz — tek bir isteğin hatası tüm servisi düşürmesin.
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+});
+
 const { resolveTenant } = require('./middleware/tenant');
 const { requireAuth, requireRole, scopeToMall } = require('./middleware/auth');
 const { requireApiKey } = require('./middleware/apiKeyAuth');
@@ -35,7 +46,16 @@ const PORT = process.env.PORT || 4000;
 
 // Bir ters proxy (nginx/Cloudflare vb.) arkasında çalışırken gerçek istemci
 // IP'sinin doğru okunması için (rate limit'in etkili olması adına).
-if (process.env.TRUST_PROXY === 'true') app.set('trust proxy', 1);
+// Render (ve genel olarak neredeyse tüm PaaS sağlayıcıları) her isteği bir
+// ters proxy üzerinden yönlendirir ve X-Forwarded-For başlığı ekler. Bu
+// ayar kapalıyken express-rate-limit her istekte bir ValidationError
+// fırlatır (yakalanmamış promise reddi → sürecin zaman zaman çökmesine/
+// yeniden başlamasına, dolayısıyla rastgele 401'lere yol açabilir). Bu
+// yüzden production'da veya TRUST_PROXY=true iken KOŞULSUZ etkinleştirilir
+// — ekstra bir ortam değişkeni unutulsa bile production'da güvenli çalışır.
+if (process.env.NODE_ENV === 'production' || process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
 
 // --- Güvenlik & performans ---------------------------------------------
 app.use(helmet());
