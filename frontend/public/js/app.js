@@ -191,57 +191,29 @@ async function bootstrapMall() {
 }
 
 async function loadFloorGeometry(stores) {
-  // Demo: sunucudaki seed verisiyle örtüşen sabit iki katlı graf (üretimde /api/floors/:id/graph gibi bir uçtan çekilir)
-  // Basitlik için burada backend seed'inde kullanılan node koordinatlarının bir kopyasını tutuyoruz.
-  const groundNodes = [
-    { id: 'K0-A-05', floorId: 'f0', code: 'K0-A-05', type: 'corridor', x: 80, y: 300, accessible: true },
-    { id: 'K0-C1', floorId: 'f0', code: 'K0-C1', type: 'corridor', x: 250, y: 300, accessible: true },
-    { id: 'K0-C2', floorId: 'f0', code: 'K0-C2', type: 'corridor', x: 450, y: 300, accessible: true },
-    { id: 'K0-C3', floorId: 'f0', code: 'K0-C3', type: 'corridor', x: 650, y: 300, accessible: true },
-    { id: 'K0-ELV', floorId: 'f0', code: 'K0-ELV', type: 'elevator', x: 650, y: 150, accessible: true },
-    { id: 'K0-STORE-LCW', floorId: 'f0', code: 'K0-STORE-LCW', type: 'store_entrance', x: 450, y: 200, accessible: true },
-    { id: 'K0-STORE-ZARA', floorId: 'f0', code: 'K0-STORE-ZARA', type: 'store_entrance', x: 650, y: 450, accessible: true },
-    { id: 'K0-STORE-STARBUCKS', floorId: 'f0', code: 'K0-STORE-STARBUCKS', type: 'store_entrance', x: 250, y: 450, accessible: true },
-  ];
-  const floor1Nodes = [
-    { id: 'K1-ELV', floorId: 'f1', code: 'K1-ELV', type: 'elevator', x: 650, y: 150, accessible: true },
-    { id: 'K1-C1', floorId: 'f1', code: 'K1-C1', type: 'corridor', x: 650, y: 300, accessible: true },
-    { id: 'K1-C2', floorId: 'f1', code: 'K1-C2', type: 'corridor', x: 450, y: 300, accessible: true },
-    { id: 'K1-STORE-MEDIAMARKT', floorId: 'f1', code: 'K1-STORE-MEDIAMARKT', type: 'store_entrance', x: 450, y: 200, accessible: true },
-    { id: 'K1-STORE-MANGO', floorId: 'f1', code: 'K1-STORE-MANGO', type: 'store_entrance', x: 250, y: 300, accessible: true },
-  ];
-  const edges = [
-    ['K0-A-05','K0-C1',1],['K0-C1','K0-C2',1],['K0-C2','K0-C3',1],
-    ['K0-C2','K0-STORE-LCW',1],['K0-C1','K0-STORE-STARBUCKS',1],
-    ['K0-C3','K0-STORE-ZARA',1],['K0-C3','K0-ELV',1],
-    ['K0-ELV','K1-ELV',4,'elevator'],
-    ['K1-ELV','K1-C1',1],['K1-C1','K1-C2',1],
-    ['K1-C2','K1-STORE-MEDIAMARKT',1],['K1-C2','K1-STORE-MANGO',1],
-  ].map(([fromId, toId, weight, edgeType]) => ({ fromId, toId, weight, edgeType: edgeType || 'walk', bidirectional: true }));
+  // Gerçek AVM verisi: admin panelinden girilen kat/node/edge grafiği
+  // /api/floors ucundan dinamik olarak çekilir (artık sabit kodlu demo
+  // veri kullanılmıyor — hangi AVM olursa olsun aynı kod çalışır).
+  const { floors: floorRows, edges } = await api('/floors');
 
-  const storesByFloor = { f0: [], f1: [] };
-  for (const s of stores) {
-    const floorKey = s.level_index === 1 ? 'f1' : 'f0';
-    const node = [...groundNodes, ...floor1Nodes].find((n) => n.code === codeForStore(s));
-    storesByFloor[floorKey].push({ ...s, entrance_node_id: node ? node.id : null });
-  }
+  const floors = floorRows.map((f) => ({
+    id: f.id,
+    level_index: f.levelIndex,
+    label: f.label,
+    viewbox: f.viewbox,
+    svgContent: f.svgContent,
+    nodes: f.nodes,
+    stores: stores.filter((s) => s.floor_id === f.id || s.level_index === f.levelIndex),
+  }));
 
-  state.floors = [
-    { id: 'f0', level_index: 0, label: 'Zemin Kat', viewbox: [0,0,1000,600], nodes: groundNodes, stores: storesByFloor.f0 },
-    { id: 'f1', level_index: 1, label: '1. Kat', viewbox: [0,0,1000,600], nodes: floor1Nodes, stores: storesByFloor.f1 },
-  ];
+  // Mağazanın giriş node'unu, koddan değil doğrudan backend'in verdiği
+  // entrance_node_id'den eşliyoruz (bkz. /api/stores yanıtı).
+  state.floors = floors;
   state.allEdges = edges;
-  state.allNodes = [...groundNodes, ...floor1Nodes];
-  state.activeFloorId = state.startNode?.level_index === 1 ? 'f1' : 'f0';
+  state.allNodes = floorRows.flatMap((f) => f.nodes);
+  state.activeFloorId = (floors.find((f) => f.level_index === state.startNode?.level_index) || floors[0])?.id;
 }
 
-function codeForStore(store) {
-  const map = {
-    'lc-waikiki': 'K0-STORE-LCW', zara: 'K0-STORE-ZARA', starbucks: 'K0-STORE-STARBUCKS',
-    mediamarkt: 'K1-STORE-MEDIAMARKT', mango: 'K1-STORE-MANGO',
-  };
-  return map[store.slug];
-}
 
 // ---------------------------------------------------------------------
 // KATEGORİ + KAT SEKMELERİ
@@ -290,6 +262,7 @@ function renderActiveFloor() {
   const startsOnThisFloor = state.startNode && floor.level_index === state.startNode.level_index;
   SmartWayMap.render({
     viewBox: floor.viewbox,
+    svgContent: floor.svgContent,
     stores: visibleStores,
     nodes: floor.nodes,
     edges: state.allEdges,

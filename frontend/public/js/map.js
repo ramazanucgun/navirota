@@ -47,6 +47,20 @@ const SmartWayMap = (() => {
     setBaseViewBox(vw, vh);
     setViewBox({ x: vx, y: vy, w: vw, h: vh });
 
+    // Arka plan referans görseli (AVM yönetiminin yüklediği gerçek mimari
+    // kat planı) — varsa, koridor/mağaza katmanlarının ALTINDA, soluk
+    // opaklıkla gösterilir. Yalnızca görsel referanstır, rota hesaplamasını
+    // etkilemez (o tamamen node/edge koordinatlarına dayanır).
+    if (opts.svgContent) {
+      const bgLayer = el('g', { class: 'bg-layer', opacity: '0.35' });
+      // Ham SVG içeriğini <g> içine gömüyoruz; kullanıcı yüklediği dosyanın
+      // kendi viewBox'ı farklıysa <svg> öğesini <g>'ye çevirmemiz gerekir.
+      const wrapper = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      wrapper.innerHTML = opts.svgContent.replace(/<\/?svg[^>]*>/g, '');
+      bgLayer.appendChild(wrapper);
+      svg.appendChild(bgLayer);
+    }
+
     const nodesById = new Map((opts.nodes || []).map((n) => [n.id, n]));
 
     // Koridor kenarları (yalnızca walk tipindekiler, hafif çizgi)

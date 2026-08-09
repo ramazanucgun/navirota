@@ -107,3 +107,12 @@ CREATE TABLE IF NOT EXISTS beacons (
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_beacons_mall ON beacons(mall_id);
+
+-- ---------------------------------------------------------------------
+-- KAT PLANI ARKA PLAN GÖRSELİ (SVG içeriği doğrudan veritabanında)
+-- Render gibi ücretsiz PaaS'lerde disk kalıcı olmadığından (her deploy'da
+-- silinir), yüklenen SVG dosyası bir dosya yolu yerine doğrudan metin
+-- olarak veritabanında saklanır — bu, kalıcılığı garanti eder ve harici
+-- bir object storage (S3 vb.) kurulumu gerektirmez.
+-- ---------------------------------------------------------------------
+ALTER TABLE floors ADD COLUMN IF NOT EXISTS svg_content TEXT;

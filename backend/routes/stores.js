@@ -11,7 +11,7 @@ router.get('/stores', async (req, res, next) => {
     const { category, floor } = req.query;
     const params = [req.mall.id];
     let sql = `
-      SELECT s.id, s.name, s.slug, s.logo_url, s.floor_id, f.level_index,
+      SELECT s.id, s.name, s.slug, s.logo_url, s.floor_id, s.entrance_node_id, f.level_index,
              s.polygon, s.unit_no,
              (SELECT json_agg(json_build_object('badge', c.badge, 'title', c.title))
                 FROM campaigns c

@@ -88,3 +88,11 @@ Test paketi kapsamı: sağlık kontrolü, ziyaretçi akışı (QR/arama/rota edg
 
 
 
+
+## Kat Planı & Harita Editörü
+
+AVM Yönetim Paneli → **Katlar & QR** → bir kat için **"🗺️ Haritayı Düzenle"**:
+- Haritada tıklayarak koridor/mağaza girişi/asansör noktaları ekleyin, iki noktayı tıklayarak birbirine bağlayın.
+- İsteğe bağlı olarak bir arka plan SVG (gerçek mimari kat planınız) yükleyebilirsiniz — bu görsel içerik doğrudan veritabanında saklanır (Render'ın ücretsiz planındaki kalıcı olmayan disk sorununu bypass eder).
+- "Mağaza Ekle" formunda artık bu editörde oluşturduğunuz "Mağaza Girişi" noktalarından birini seçebilirsiniz.
+- **Ziyaretçi uygulaması artık bu gerçek veriyi `/api/floors` ucundan dinamik çekiyor** — daha önce yalnızca demo (Terrace AVM) sabit kodluydu, artık girdiğiniz herhangi bir AVM için otomatik çalışır.

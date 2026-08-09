@@ -131,7 +131,10 @@ async function renderFloors() {
               <td><strong>${escapeHtml(f.label)}</strong> <span class="muted">(seviye ${f.level_index})</span></td>
               <td>${f.node_count}</td>
               <td>${f.store_count}</td>
-              <td><button class="btn btn--ghost btn--sm" data-qr-floor="${f.id}">QR Üret</button></td>
+              <td>
+                <button class="btn btn--ghost btn--sm" data-qr-floor="${f.id}">QR Üret</button>
+                <button class="btn btn--gold btn--sm" data-edit-floor="${f.id}">🗺️ Haritayı Düzenle</button>
+              </td>
             </tr>`).join('')}
         </tbody>
       </table>
@@ -160,6 +163,10 @@ async function renderFloors() {
       } catch (err) { toast(err.message, true); }
     });
   });
+  document.querySelectorAll('[data-edit-floor]').forEach((btn) => {
+    btn.addEventListener('click', () => renderFloorEditor(btn.dataset.editFloor));
+  });
+
   document.getElementById('refreshQrBtn').addEventListener('click', loadQrList);
   loadQrList();
 }
@@ -184,6 +191,202 @@ async function loadQrList() {
       loadQrList();
     });
   });
+}
+
+// ---------------------------------------------------------------------
+// KAT PLANI GÖRSEL EDİTÖRÜ — tıkla-node-ekle, iki node'a tıkla-bağla,
+// SVG arka plan yükleme. Kaydedince PUT /floors/:id/graph çağrılır.
+// ---------------------------------------------------------------------
+const NODE_TYPES = [
+  ['corridor', 'Koridor'], ['store_entrance', 'Mağaza Girişi'], ['elevator', 'Asansör'],
+  ['escalator', 'Yürüyen Merdiven'], ['stairs', 'Merdiven'], ['exit', 'Çıkış'], ['poi', 'Diğer (WC/ATM/vb.)'],
+];
+const EDGE_TYPES = [['walk', 'Yürüyüş'], ['elevator', 'Asansör'], ['escalator', 'Yürüyen Merdiven'], ['stairs', 'Merdiven']];
+
+let editorState = null; // { floorId, nodes:[{code,type,x,y,accessible}], edges:[{fromCode,toCode,weight,edgeType}], mode, pendingEdgeFrom, svgContent, viewbox }
+
+async function renderFloorEditor(floorId) {
+  const { floor, nodes, edges } = await AdminAuth.api(`/api/admin/floors/${floorId}/graph`);
+  editorState = {
+    floorId, nodes: nodes || [], edges: edges || [],
+    mode: 'select', pendingEdgeFrom: null,
+    svgContent: floor.svgContent || null,
+    viewbox: (floor.viewbox || '0 0 1000 600').split(' ').map(Number),
+  };
+
+  content.innerHTML = `
+    ${header(`${escapeHtml(floor.label)} — Harita Editörü`, 'Koridor/mağaza/asansör noktalarını tıklayarak yerleştirin, iki noktayı tıklayarak bağlayın.')}
+    <div class="panel">
+      <div class="panel__head">
+        <h3>Araçlar</h3>
+        <button class="btn btn--ghost btn--sm" id="backToFloors">← Katlara Dön</button>
+      </div>
+      <div class="panel__body">
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="field">
+            <label>Mod</label>
+            <select id="editorMode">
+              <option value="select">Seç / Sil</option>
+              <option value="add-node">+ Nokta Ekle</option>
+              <option value="add-edge">🔗 İki Noktayı Bağla</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Arka Plan SVG (opsiyonel — sadece görsel referans)</label>
+            <input type="file" id="svgFileInput" accept=".svg,image/svg+xml" />
+          </div>
+        </div>
+        <div id="editorHint" class="muted" style="margin-bottom:10px;font-size:13px"></div>
+        <div style="position:relative;border:1px solid var(--line-strong);border-radius:12px;overflow:hidden;background:#fff">
+          <svg id="editorSvg" viewBox="${editorState.viewbox.join(' ')}" style="width:100%;height:520px;cursor:crosshair;display:block"></svg>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel__head">
+        <h3>Noktalar (${editorState.nodes.length}) &amp; Bağlantılar (${editorState.edges.length})</h3>
+        <button class="btn btn--primary btn--sm" id="saveGraphBtn">💾 Kaydet</button>
+      </div>
+      <div class="panel__body" id="graphSummary"></div>
+    </div>`;
+
+  document.getElementById('backToFloors').addEventListener('click', renderFloors);
+  document.getElementById('editorMode').addEventListener('change', (e) => {
+    editorState.mode = e.target.value;
+    editorState.pendingEdgeFrom = null;
+    updateEditorHint();
+  });
+  document.getElementById('svgFileInput').addEventListener('change', handleSvgUpload);
+  document.getElementById('saveGraphBtn').addEventListener('click', saveGraph);
+
+  updateEditorHint();
+  drawEditorCanvas();
+  renderGraphSummary();
+}
+
+function updateEditorHint() {
+  const hints = {
+    select: 'Bir noktaya tıklayıp "Sil" ile kaldırabilirsiniz.',
+    'add-node': 'Haritada bir noktaya tıklayın — kod ve tip soracağız.',
+    'add-edge': 'Birbirine bağlamak istediğiniz iki noktayı sırayla tıklayın.',
+  };
+  document.getElementById('editorHint').textContent = hints[editorState.mode] || '';
+}
+
+function drawEditorCanvas() {
+  const svg = document.getElementById('editorSvg');
+  svg.innerHTML = '';
+  const ns = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs) => {
+    const n = document.createElementNS(ns, tag);
+    Object.entries(attrs).forEach(([k, v]) => n.setAttribute(k, v));
+    return n;
+  };
+
+  // Arka plan referans SVG (varsa, soluk)
+  if (editorState.svgContent) {
+    const g = el('g', { opacity: '0.3' });
+    g.innerHTML = editorState.svgContent.replace(/<\/?svg[^>]*>/g, '');
+    svg.appendChild(g);
+  }
+
+  // Kenarlar
+  editorState.edges.forEach((e) => {
+    const a = editorState.nodes.find((n) => n.code === e.fromCode);
+    const b = editorState.nodes.find((n) => n.code === e.toCode);
+    if (!a || !b) return;
+    svg.appendChild(el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: '#B5652C', 'stroke-width': 2 }));
+  });
+
+  // Noktalar
+  editorState.nodes.forEach((n) => {
+    const isPending = editorState.pendingEdgeFrom === n.code;
+    const circle = el('circle', {
+      cx: n.x, cy: n.y, r: 9,
+      fill: isPending ? '#C79A3E' : (n.type === 'store_entrance' ? '#8C4A1D' : '#17140F'),
+      stroke: '#fff', 'stroke-width': 2, style: 'cursor:pointer',
+    });
+    circle.addEventListener('click', (ev) => { ev.stopPropagation(); handleNodeClick(n); });
+    svg.appendChild(circle);
+    const label = el('text', { x: n.x + 12, y: n.y - 10, 'font-size': 11, fill: '#17140F', 'font-family': 'sans-serif' });
+    label.textContent = n.code;
+    svg.appendChild(label);
+  });
+
+  svg.onclick = (ev) => {
+    if (editorState.mode !== 'add-node') return;
+    const pt = svg.createSVGPoint();
+    pt.x = ev.clientX; pt.y = ev.clientY;
+    const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+    addNodeAt(Math.round(loc.x), Math.round(loc.y));
+  };
+}
+
+function addNodeAt(x, y) {
+  const code = prompt('Nokta kodu (benzersiz, örn: K0-C4 veya K0-STORE-ORNEK):');
+  if (!code) return;
+  if (editorState.nodes.some((n) => n.code === code)) { toast('Bu kod zaten kullanılıyor.', true); return; }
+  const typeChoice = prompt(`Tip seçin:\n${NODE_TYPES.map(([v, l], i) => `${i + 1}) ${l}`).join('\n')}`, '1');
+  const type = NODE_TYPES[Number(typeChoice) - 1]?.[0] || 'corridor';
+  editorState.nodes.push({ code, type, x, y, accessible: true });
+  drawEditorCanvas();
+  renderGraphSummary();
+}
+
+function handleNodeClick(node) {
+  if (editorState.mode === 'select') {
+    if (!confirm(`"${node.code}" silinsin mi? (Bu noktaya bağlı kenarlar da silinir.)`)) return;
+    editorState.nodes = editorState.nodes.filter((n) => n.code !== node.code);
+    editorState.edges = editorState.edges.filter((e) => e.fromCode !== node.code && e.toCode !== node.code);
+    drawEditorCanvas(); renderGraphSummary();
+    return;
+  }
+  if (editorState.mode === 'add-edge') {
+    if (!editorState.pendingEdgeFrom) {
+      editorState.pendingEdgeFrom = node.code;
+      drawEditorCanvas();
+      return;
+    }
+    if (editorState.pendingEdgeFrom === node.code) { editorState.pendingEdgeFrom = null; drawEditorCanvas(); return; }
+    const typeChoice = prompt(`Bağlantı tipi seçin:\n${EDGE_TYPES.map(([v, l], i) => `${i + 1}) ${l}`).join('\n')}`, '1');
+    const edgeType = EDGE_TYPES[Number(typeChoice) - 1]?.[0] || 'walk';
+    const weight = Number(prompt('Ağırlık/mesafe (varsayılan 1):', '1')) || 1;
+    editorState.edges.push({ fromCode: editorState.pendingEdgeFrom, toCode: node.code, edgeType, weight, bidirectional: true });
+    editorState.pendingEdgeFrom = null;
+    drawEditorCanvas(); renderGraphSummary();
+  }
+}
+
+function renderGraphSummary() {
+  const box = document.getElementById('graphSummary');
+  if (!box) return;
+  box.innerHTML = `
+    <table class="data-table">
+      <thead><tr><th>Kod</th><th>Tip</th><th>Koordinat</th></tr></thead>
+      <tbody>${editorState.nodes.length ? editorState.nodes.map((n) => `<tr><td>${escapeHtml(n.code)}</td><td>${NODE_TYPES.find(t=>t[0]===n.type)?.[1] || n.type}</td><td>${n.x}, ${n.y}</td></tr>`).join('') : '<tr><td colspan="3" class="empty-state">Henüz nokta eklenmedi.</td></tr>'}</tbody>
+    </table>`;
+}
+
+async function handleSvgUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  if (!text.includes('<svg')) { toast('Geçerli bir SVG dosyası değil.', true); return; }
+  try {
+    await AdminAuth.api(`/api/admin/floors/${editorState.floorId}/svg-content`, { method: 'PATCH', body: { svgContent: text } });
+    editorState.svgContent = text;
+    drawEditorCanvas();
+    toast('Arka plan SVG kaydedildi.');
+  } catch (err) { toast(err.message, true); }
+}
+
+async function saveGraph() {
+  try {
+    const r = await AdminAuth.api(`/api/admin/floors/${editorState.floorId}/graph`, {
+      method: 'PUT', body: { nodes: editorState.nodes, edges: editorState.edges },
+    });
+    toast(`Kaydedildi: ${r.nodeCount} nokta, ${r.edgeCount} bağlantı.`);
+  } catch (err) { toast(err.message, true); }
 }
 
 // ---------------------------------------------------------------------
@@ -233,16 +436,34 @@ function openStoreForm(floors) {
           <div class="field"><label>Kat</label>
             <select id="fFloor">${floors.map((f) => `<option value="${f.id}">${escapeHtml(f.label)}</option>`).join('')}</select>
           </div>
+          <div class="field"><label>Giriş Noktası</label>
+            <select id="fEntranceNode"><option value="">Yükleniyor…</option></select>
+          </div>
           <div class="field"><label>Ünite No</label><input id="fUnit" /></div>
           <div class="field form-grid--full"><label>Yönetici E-postası (opsiyonel)</label><input id="fMgrEmail" type="email" /></div>
           <div class="field form-grid--full"><label>Yönetici Şifresi (opsiyonel)</label><input id="fMgrPass" type="password" /></div>
         </div>
+        <p class="muted" style="font-size:12px;margin-top:6px">Giriş noktası listesi boşsa, önce "Katlar &amp; QR" → "Haritayı Düzenle"den bu kata bir "Mağaza Girişi" noktası ekleyin.</p>
         <button class="btn btn--primary btn--block" id="submitStore" style="margin-top:14px">Mağaza Oluştur</button>
       </div>
     </div>`;
   document.body.appendChild(scrim);
   scrim.addEventListener('click', (e) => { if (e.target === scrim) scrim.remove(); });
   scrim.querySelector('#closeModal').addEventListener('click', () => scrim.remove());
+
+  async function loadEntranceNodes(floorId) {
+    const sel = scrim.querySelector('#fEntranceNode');
+    sel.innerHTML = '<option value="">Yükleniyor…</option>';
+    try {
+      const { entranceNodes } = await AdminAuth.api(`/api/admin/floors/${floorId}/entrance-nodes`);
+      sel.innerHTML = entranceNodes.length
+        ? `<option value="">— Seçilmedi (rota hesaplanamaz) —</option>` + entranceNodes.map((n) => `<option value="${n.id}">${escapeHtml(n.code)}</option>`).join('')
+        : `<option value="">Bu katta giriş noktası yok</option>`;
+    } catch { sel.innerHTML = '<option value="">Yüklenemedi</option>'; }
+  }
+  loadEntranceNodes(floors[0]?.id);
+  scrim.querySelector('#fFloor').addEventListener('change', (e) => loadEntranceNodes(e.target.value));
+
   scrim.querySelector('#submitStore').addEventListener('click', async () => {
     try {
       await AdminAuth.api('/api/admin/stores', {
@@ -251,6 +472,7 @@ function openStoreForm(floors) {
           name: scrim.querySelector('#fName').value,
           slug: scrim.querySelector('#fSlug').value,
           floorId: scrim.querySelector('#fFloor').value,
+          entranceNodeId: scrim.querySelector('#fEntranceNode').value || undefined,
           unitNo: scrim.querySelector('#fUnit').value,
           managerEmail: scrim.querySelector('#fMgrEmail').value || undefined,
           managerPassword: scrim.querySelector('#fMgrPass').value || undefined,

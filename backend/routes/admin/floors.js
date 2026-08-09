@@ -63,6 +63,63 @@ router.patch('/floors/:id/svg', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// PATCH /api/admin/floors/:id/svg-content — SVG dosyasının HAM İÇERİĞİNİ kaydeder
+// (Render gibi ücretsiz PaaS'lerde disk kalıcı olmadığından, dosya yolu değil
+// doğrudan metin içeriği veritabanında saklanır.)
+router.patch('/floors/:id/svg-content', async (req, res, next) => {
+  try {
+    const { svgContent } = req.body;
+    if (!svgContent || typeof svgContent !== 'string') return res.status(400).json({ error: 'svgContent zorunludur.' });
+    if (!svgContent.trim().startsWith('<svg') && !svgContent.includes('<svg')) {
+      return res.status(400).json({ error: 'Geçerli bir SVG içeriği değil (dosya <svg> ile başlamalı).' });
+    }
+    if (svgContent.length > 2_000_000) return res.status(400).json({ error: 'SVG dosyası çok büyük (maks. ~2MB).' });
+
+    const { rows } = await query(
+      `UPDATE floors SET svg_content = $1 WHERE id = $2 AND mall_id = $3 RETURNING id, level_index, label`,
+      [svgContent, req.params.id, req.mall.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Kat bulunamadı.' });
+    await recordAudit({ req, entity: 'floor', entityId: req.params.id, action: 'update', diff: { svgContentUpdated: true } });
+    res.json({ floor: rows[0] });
+  } catch (err) { next(err); }
+});
+
+// GET /api/admin/floors/:id/graph — düzenleyicinin mevcut node/edge verisini
+// yüklemesi için (PUT .../graph ile simetrik, code-tabanlı format döner)
+router.get('/floors/:id/graph', async (req, res, next) => {
+  try {
+    const floorCheck = await query(
+      'SELECT id, label, viewbox, svg_content AS "svgContent" FROM floors WHERE id = $1 AND mall_id = $2',
+      [req.params.id, req.mall.id]
+    );
+    if (!floorCheck.rows.length) return res.status(404).json({ error: 'Kat bulunamadı.' });
+
+    const nodesRes = await query(
+      `SELECT id, code, node_type AS type, x::float8 AS x, y::float8 AS y, linked_group AS "linkedGroup", accessible
+       FROM nav_nodes WHERE floor_id = $1 ORDER BY code`,
+      [req.params.id]
+    );
+    const idToCode = Object.fromEntries(nodesRes.rows.map((n) => [n.id, n.code]));
+    const edgesRes = await query(
+      `SELECT e.from_node_id, e.to_node_id, e.weight::float8 AS weight, e.edge_type AS "edgeType", e.bidirectional
+       FROM nav_edges e JOIN nav_nodes n ON n.id = e.from_node_id
+       WHERE n.floor_id = $1`,
+      [req.params.id]
+    );
+    const edges = edgesRes.rows.map((e) => ({
+      fromCode: idToCode[e.from_node_id], toCode: idToCode[e.to_node_id],
+      weight: e.weight, edgeType: e.edgeType, bidirectional: e.bidirectional,
+    })).filter((e) => e.fromCode && e.toCode);
+
+    res.json({
+      floor: floorCheck.rows[0],
+      nodes: nodesRes.rows.map(({ id, ...rest }) => rest),
+      edges,
+    });
+  } catch (err) { next(err); }
+});
+
 // DELETE /api/admin/floors/:id
 router.delete('/floors/:id', async (req, res, next) => {
   try {
@@ -168,6 +225,20 @@ router.patch('/qr/:id/printed', async (req, res, next) => {
     );
     if (!rows.length) return res.status(404).json({ error: 'QR bulunamadı.' });
     res.json({ qrCode: rows[0] });
+  } catch (err) { next(err); }
+});
+
+// GET /api/admin/floors/:id/entrance-nodes — mağaza oluşturma formunda
+// "Giriş Noktası" seçimi için, bu kattaki store_entrance tipi node'ları döner.
+router.get('/floors/:id/entrance-nodes', async (req, res, next) => {
+  try {
+    const floorCheck = await query('SELECT id FROM floors WHERE id = $1 AND mall_id = $2', [req.params.id, req.mall.id]);
+    if (!floorCheck.rows.length) return res.status(404).json({ error: 'Kat bulunamadı.' });
+    const { rows } = await query(
+      `SELECT id, code FROM nav_nodes WHERE floor_id = $1 AND node_type = 'store_entrance' ORDER BY code`,
+      [req.params.id]
+    );
+    res.json({ entranceNodes: rows });
   } catch (err) { next(err); }
 });
 

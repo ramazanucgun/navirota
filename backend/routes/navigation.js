@@ -188,4 +188,52 @@ router.get('/route', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ---------------------------------------------------------------------
+// GET /api/floors — ziyaretçi haritası için TAM kat/graf verisi (herkese
+// açık, tenant-scoped). Admin panelinden girilen gerçek AVM verisiyle
+// ziyaretçi haritasını dinamik olarak besler — sabit kodlu demo veri yerine.
+// ---------------------------------------------------------------------
+router.get('/floors', async (req, res, next) => {
+  try {
+    const floorsRes = await query(
+      `SELECT id, level_index AS "levelIndex", label, viewbox, svg_content AS "svgContent"
+       FROM floors WHERE mall_id = $1 ORDER BY level_index`,
+      [req.mall.id]
+    );
+
+    const nodesRes = await query(
+      `SELECT n.id, n.floor_id AS "floorId", n.code, n.node_type AS type,
+              n.x::float8 AS x, n.y::float8 AS y, n.accessible
+       FROM nav_nodes n JOIN floors f ON f.id = n.floor_id
+       WHERE f.mall_id = $1`,
+      [req.mall.id]
+    );
+    const edgesRes = await query(
+      `SELECT e.from_node_id AS "fromId", e.to_node_id AS "toId",
+              e.weight::float8 AS weight, e.edge_type AS "edgeType", e.bidirectional
+       FROM nav_edges e
+       JOIN nav_nodes n ON n.id = e.from_node_id
+       JOIN floors f ON f.id = n.floor_id
+       WHERE f.mall_id = $1`,
+      [req.mall.id]
+    );
+
+    const nodesByFloor = {};
+    for (const n of nodesRes.rows) {
+      (nodesByFloor[n.floorId] ||= []).push(n);
+    }
+
+    const floors = floorsRes.rows.map((f) => ({
+      id: f.id,
+      levelIndex: f.levelIndex,
+      label: f.label,
+      viewbox: (f.viewbox || '0 0 1000 600').split(' ').map(Number),
+      svgContent: f.svgContent || null,
+      nodes: nodesByFloor[f.id] || [],
+    }));
+
+    res.json({ floors, edges: edgesRes.rows });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
