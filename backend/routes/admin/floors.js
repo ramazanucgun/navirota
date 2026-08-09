@@ -68,7 +68,7 @@ router.patch('/floors/:id/svg', async (req, res, next) => {
 // doğrudan metin içeriği veritabanında saklanır.)
 router.patch('/floors/:id/svg-content', async (req, res, next) => {
   try {
-    const { svgContent } = req.body;
+    const { svgContent, viewbox } = req.body;
     if (!svgContent || typeof svgContent !== 'string') return res.status(400).json({ error: 'svgContent zorunludur.' });
     if (!svgContent.trim().startsWith('<svg') && !svgContent.includes('<svg')) {
       return res.status(400).json({ error: 'Geçerli bir SVG içeriği değil (dosya <svg> ile başlamalı).' });
@@ -76,11 +76,11 @@ router.patch('/floors/:id/svg-content', async (req, res, next) => {
     if (svgContent.length > 2_000_000) return res.status(400).json({ error: 'SVG dosyası çok büyük (maks. ~2MB).' });
 
     const { rows } = await query(
-      `UPDATE floors SET svg_content = $1 WHERE id = $2 AND mall_id = $3 RETURNING id, level_index, label`,
-      [svgContent, req.params.id, req.mall.id]
+      `UPDATE floors SET svg_content = $1, viewbox = COALESCE($2, viewbox) WHERE id = $3 AND mall_id = $4 RETURNING id, level_index, label, viewbox`,
+      [svgContent, viewbox || null, req.params.id, req.mall.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Kat bulunamadı.' });
-    await recordAudit({ req, entity: 'floor', entityId: req.params.id, action: 'update', diff: { svgContentUpdated: true } });
+    await recordAudit({ req, entity: 'floor', entityId: req.params.id, action: 'update', diff: { svgContentUpdated: true, viewbox } });
     res.json({ floor: rows[0] });
   } catch (err) { next(err); }
 });

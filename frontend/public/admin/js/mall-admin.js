@@ -372,9 +372,45 @@ async function handleSvgUpload(e) {
   if (!file) return;
   const text = await file.text();
   if (!text.includes('<svg')) { toast('Geçerli bir SVG dosyası değil.', true); return; }
+
+  // Yüklenen dosyanın kendi koordinat sistemini (viewBox) tespit edip,
+  // kattaki mevcut node'larla hizasız kalmaması için editörün viewBox'ı ile
+  // otomatik eşitliyoruz — aksi halde arka plan görsel ile tıklayarak
+  // yerleştirdiğiniz noktalar farklı ölçeklerde görünür.
+  let detectedViewbox = null;
   try {
-    await AdminAuth.api(`/api/admin/floors/${editorState.floorId}/svg-content`, { method: 'PATCH', body: { svgContent: text } });
+    const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+    const svgEl = doc.querySelector('svg');
+    const vb = svgEl?.getAttribute('viewBox');
+    if (vb) {
+      detectedViewbox = vb.trim();
+    } else {
+      const w = parseFloat(svgEl?.getAttribute('width'));
+      const h = parseFloat(svgEl?.getAttribute('height'));
+      if (w && h) detectedViewbox = `0 0 ${w} ${h}`;
+    }
+  } catch { /* tespit edilemezse mevcut viewBox korunur */ }
+
+  const currentVb = editorState.viewbox.join(' ');
+  let viewboxToSave = null;
+  if (detectedViewbox && detectedViewbox !== currentVb) {
+    const useDetected = confirm(
+      `Yüklediğiniz dosyanın koordinat sistemi (${detectedViewbox}) mevcut kat ayarından (${currentVb}) farklı.\n\n` +
+      `Otomatik eşitlensin mi? (Önerilir — aksi halde noktalarınız görselle hizasız görünebilir.)\n\n` +
+      `"Tamam" = Eşitle ve devam et, "İptal" = Mevcut ayarı koru (görsel yeniden ölçeklenmeyecek).`
+    );
+    if (useDetected) viewboxToSave = detectedViewbox;
+  }
+
+  try {
+    const { floor } = await AdminAuth.api(`/api/admin/floors/${editorState.floorId}/svg-content`, {
+      method: 'PATCH', body: { svgContent: text, viewbox: viewboxToSave },
+    });
     editorState.svgContent = text;
+    if (viewboxToSave) {
+      editorState.viewbox = floor.viewbox.split(' ').map(Number);
+      document.getElementById('editorSvg').setAttribute('viewBox', floor.viewbox);
+    }
     drawEditorCanvas();
     toast('Arka plan SVG kaydedildi.');
   } catch (err) { toast(err.message, true); }
