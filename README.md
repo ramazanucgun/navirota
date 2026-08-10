@@ -96,3 +96,17 @@ AVM Yönetim Paneli → **Katlar & QR** → bir kat için **"🗺️ Haritayı D
 - İsteğe bağlı olarak bir arka plan SVG (gerçek mimari kat planınız) yükleyebilirsiniz — bu görsel içerik doğrudan veritabanında saklanır (Render'ın ücretsiz planındaki kalıcı olmayan disk sorununu bypass eder).
 - "Mağaza Ekle" formunda artık bu editörde oluşturduğunuz "Mağaza Girişi" noktalarından birini seçebilirsiniz.
 - **Ziyaretçi uygulaması artık bu gerçek veriyi `/api/floors` ucundan dinamik çekiyor** — daha önce yalnızca demo (Terrace AVM) sabit kodluydu, artık girdiğiniz herhangi bir AVM için otomatik çalışır.
+
+## Temiz AVM URL'leri
+
+Artık her AVM'nin kendi kısa, paylaşılabilir/QR-dostu URL'i var:
+
+```
+navirota.com/iyasparkavm         ← Ziyaretçi PWA (eski: navirota.com/?mall=iyasparkavm)
+navirota.com/terrace             ← Demo AVM
+```
+
+Eski `?mall=slug` biçimi de çalışmaya devam eder (geriye dönük uyumlu) — öncelik sırası: temiz URL → `?mall=` → varsayılan (`terrace`).
+
+- Admin panelleri (`/admin/*.html`), kiosk (`/kiosk.html`) ve statik varlıklar (`/js`, `/css`, `/icons`) bu yönlendirmeden etkilenmez — sunucu önce gerçek dosyaları arar, yalnızca eşleşme yoksa path'i bir AVM slug'ı olarak yorumlar.
+- PWA manifest'i artık dinamiktir (`GET /manifest.json?mall=slug`) — "Ana ekrana ekle" ile yüklenen kısayol, doğrudan ilgili AVM'nin temiz URL'ine açılır.

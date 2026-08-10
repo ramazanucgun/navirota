@@ -42,7 +42,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (SHELL_ASSETS.some((a) => url.pathname === a) || url.pathname === '/') {
+  // Temiz AVM URL'leri (örn. /iyasparkavm) da app-shell (index.html) ile
+  // aynı şekilde önbelleklenir — tek segmentli, dosya olmayan herhangi bir
+  // path bir AVM slug'ı olabilir (bkz. backend/server.js'teki eşleşen route).
+  const isMallSlugPath = /^\/[^/.]+$/.test(url.pathname) && url.pathname !== '/api';
+  if (SHELL_ASSETS.some((a) => url.pathname === a) || url.pathname === '/' || isMallSlugPath) {
     event.respondWith(cacheFirst(request));
   }
 });

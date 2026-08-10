@@ -2,7 +2,18 @@
 'use strict';
 
 const API_BASE = '/api';
-const MALL_SLUG = new URLSearchParams(location.search).get('mall') || 'terrace';
+// AVM kimliği önce temiz URL'den (navirota.com/iyasparkavm), yoksa eski
+// ?mall=slug query param'ından, o da yoksa demo AVM'den okunur. Bu sıralama
+// hem yeni "temiz link" QR'larıyla hem de eski paylaşılmış linklerle uyumluluğu korur.
+const PATH_MALL_SLUG = location.pathname.replace(/^\/+/, '').split('/')[0];
+const RESERVED_PATH_SEGMENTS = new Set(['admin', 'api', 'js', 'css', 'icons', 'docs', 'healthz', 'kiosk.html', 'manifest.json', 'service-worker.js', '']);
+const MALL_SLUG = new URLSearchParams(location.search).get('mall')
+  || (RESERVED_PATH_SEGMENTS.has(PATH_MALL_SLUG) ? null : PATH_MALL_SLUG)
+  || 'terrace';
+
+// PWA manifest'ini bu AVM'ye göre günceller ("Ana ekrana ekle" doğru
+// AVM'nin temiz URL'ine (örn. /iyasparkavm) açılsın diye).
+document.getElementById('manifestLink')?.setAttribute('href', `/manifest.json?mall=${encodeURIComponent(MALL_SLUG)}`);
 
 // ---------------------------------------------------------------------
 // ZİYARETÇİ KİMLİĞİ (anonim, cihazda kalıcı — sadakat/favoriler/çekiliş için)

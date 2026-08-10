@@ -97,6 +97,28 @@ app.use(express.static(path.join(__dirname, '..', 'frontend', 'public')));
 // --- Sağlık kontrolü -----------------------------------------------------
 app.get('/healthz', (_req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
+// --- Dinamik PWA manifest'i: "Ana ekrana ekle" doğru AVM'ye açılsın diye ---
+// Statik dosyadan ÖNCE tanımlanmalı (Express ilk eşleşen route'u kullanır),
+// ?mall= verilmişse start_url o AVM'nin temiz URL'ine ayarlanır.
+app.get('/manifest.json', (req, res) => {
+  const mall = req.query.mall;
+  res.json({
+    name: 'SmartWay AVM',
+    short_name: 'SmartWay',
+    description: 'QR tabanlı akıllı AVM yönlendirme ve reklam platformu',
+    start_url: mall ? `/${mall}` : '/',
+    scope: '/',
+    display: 'standalone',
+    orientation: 'portrait-primary',
+    background_color: '#F6F3EC',
+    theme_color: '#141311',
+    icons: [
+      { src: '/icons/icon-192.svg', sizes: '192x192', type: 'image/svg+xml', purpose: 'any' },
+      { src: '/icons/icon-512.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any' },
+    ],
+  });
+});
+
 // --- Kimlik doğrulama (tenant bağımsız, kendi route'ları içinde gerektiğinde requireAuth uygular) ---
 app.use('/api', authRoutes);
 
@@ -130,6 +152,21 @@ app.use('/api', resolveTenant, loyaltyRoutes);
 
 // --- 404 ------------------------------------------------------------------
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Uç nokta bulunamadı.' }));
+
+// --- TEMİZ AVM URL'İ: navirota.com/iyasparkavm gibi --------------------------
+// Ziyaretçi PWA'sı normalde ?mall=slug query param'ı ile çalışır; bu route,
+// tek segmentli bir path'i (örn. /iyasparkavm) AVM slug'ı olarak yorumlayıp
+// aynı index.html'i sunar — asıl slug çözümlemesi tarayıcıda app.js
+// tarafından URL path'inden okunur (bkz. frontend/public/js/app.js).
+// Yalnızca gerçek bir statik dosya/klasörle (js, css, admin, icons, api vb.)
+// ÇAKIŞMAYAN istekler buraya düşer, çünkü express.static bu route'tan ÖNCE
+// tanımlıdır ve var olan dosyaları zaten kendisi sunar.
+const RESERVED_TOP_LEVEL_PATHS = new Set(['admin', 'api', 'js', 'css', 'icons', 'docs', 'healthz', 'kiosk.html', 'manifest.json', 'service-worker.js']);
+app.get('/:mallSlug', (req, res, next) => {
+  const slug = req.params.mallSlug;
+  if (slug.includes('.') || RESERVED_TOP_LEVEL_PATHS.has(slug)) return next(); // dosya isteği ya da ayrılmış yol — normal 404 akışına düş
+  res.sendFile(path.join(__dirname, '..', 'frontend', 'public', 'index.html'));
+});
 
 // --- Hata yakalayıcı --------------------------------------------------------
 // eslint-disable-next-line no-unused-vars
