@@ -1,6 +1,6 @@
 // backend/services/routeEngine.js
 //
-// SmartWay AVM Route Engine
+// Navirota Route Engine
 // --------------------------------------------------------------------
 // Graf modeli:
 //   - Node   : { id, floorId, code, type, x, y, accessible }

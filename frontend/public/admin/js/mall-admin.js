@@ -814,7 +814,7 @@ async function renderUsers() {
 // ---------------------------------------------------------------------
 async function renderSupport() {
   content.innerHTML = `
-    ${header('Destek', 'SmartWay ekibine talep gönderin.')}
+    ${header('Destek', 'Navirota ekibine talep gönderin.')}
     <div class="panel"><div class="panel__body">
       <div class="field"><label>Konu</label><input id="sSubject" /></div>
       <div class="field"><label>Mesaj</label><textarea id="sMessage" rows="4"></textarea></div>

@@ -5,7 +5,7 @@
 'use strict';
 const stage = document.getElementById('stage');
 const errorBanner = document.getElementById('errorBanner');
-let pairingCode = localStorage.getItem('sw_kiosk_pairing_code');
+let pairingCode = localStorage.getItem('nav_kiosk_pairing_code');
 let items = [];
 let idx = 0;
 let timer = null;
@@ -33,7 +33,7 @@ async function fetchPlaylist() {
   } catch (err) {
     showError(err.message);
     if (err.message.includes('bulunamadı')) {
-      localStorage.removeItem('sw_kiosk_pairing_code');
+      localStorage.removeItem('nav_kiosk_pairing_code');
       document.getElementById('pairScreen').style.display = 'flex';
       stage.style.display = 'none';
     }
@@ -65,7 +65,7 @@ document.getElementById('pairBtn').addEventListener('click', () => {
   const code = document.getElementById('pairInput').value.trim().toUpperCase();
   if (!code) return;
   pairingCode = code;
-  localStorage.setItem('sw_kiosk_pairing_code', code);
+  localStorage.setItem('nav_kiosk_pairing_code', code);
   document.getElementById('pairScreen').style.display = 'none';
   stage.style.display = 'block';
   fetchPlaylist();

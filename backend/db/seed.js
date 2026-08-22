@@ -220,7 +220,7 @@ async function seed() {
 
   await query(
     `INSERT INTO users (mall_id, email, password_hash, full_name, role)
-     VALUES (NULL, 'super@smartwayavm.com', $1, 'SmartWay Platform Ekibi', 'super_admin')
+     VALUES (NULL, 'super@navirota.com', $1, 'Navirota Platform Ekibi', 'super_admin')
      ON CONFLICT (email) DO NOTHING`,
     [superAdminHash]
   );
@@ -238,7 +238,7 @@ async function seed() {
   );
 
   console.log('Demo kullanıcılar:');
-  console.log('  Super Admin   → super@smartwayavm.com / SuperAdmin123!');
+  console.log('  Super Admin   → super@navirota.com / SuperAdmin123!');
   console.log('  AVM Yönetimi  → admin@terrace-avm.com / MallAdmin123!');
   console.log('  Mağaza Paneli → lcwaikiki@terrace-avm.com / StoreManager123!');
 

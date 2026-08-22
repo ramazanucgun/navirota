@@ -136,4 +136,4 @@ class NavGraph {
   }
 }
 
-window.SmartWayRouteEngine = { NavGraph, MinHeap };
+window.NavirotaRouteEngine = { NavGraph, MinHeap };

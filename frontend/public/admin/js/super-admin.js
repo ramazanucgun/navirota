@@ -55,7 +55,7 @@ async function renderView(view) {
 async function renderOverview() {
   const o = await AdminAuth.api('/api/superadmin/overview');
   content.innerHTML = `
-    ${header('Platform Özeti', 'SmartWay AVM — tüm AVM\'ler geneli')}
+    ${header('Platform Özeti', 'Navirota — tüm AVM\'ler geneli')}
     <div class="stat-grid">
       <div class="stat-card"><div class="stat-card__label">Aktif AVM</div><div class="stat-card__value">${o.activeMalls}</div></div>
       <div class="stat-card"><div class="stat-card__label">Aktif Mağaza</div><div class="stat-card__value">${o.activeStores}</div></div>

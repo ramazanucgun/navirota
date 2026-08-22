@@ -93,7 +93,7 @@ router.post('/billing/checkout', async (req, res, next) => {
       },
       basketItems: [{
         id: plan.id,
-        name: `SmartWay AVM — ${plan.name} (aylık abonelik)`,
+        name: `Navirota — ${plan.name} (aylık abonelik)`,
         category1: 'SaaS',
         itemType: 'VIRTUAL',
         price: plan.monthly_price,

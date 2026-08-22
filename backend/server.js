@@ -1,5 +1,5 @@
 // backend/server.js
-// SmartWay AVM — API sunucusu.
+// Navirota — API sunucusu.
 // Mimari: Express + PostgreSQL, tamamen QR/SVG tabanlı, ek donanım yok.
 
 require('dotenv').config();
@@ -106,7 +106,7 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
 
 if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
   // eslint-disable-next-line no-console
-  console.warn('[cors] UYARI: ALLOWED_ORIGINS tanımlı değil — yönetim panel API\'leri şu an tüm origin\'lere açık. Production\'da bu değişkenin (örn. https://app.smartwayavm.com) set edilmesi önerilir.');
+  console.warn('[cors] UYARI: ALLOWED_ORIGINS tanımlı değil — yönetim panel API\'leri şu an tüm origin\'lere açık. Production\'da bu değişkenin (örn. https://app.navirota.com) set edilmesi önerilir.');
 }
 
 const adminCors = cors({
@@ -186,8 +186,8 @@ app.get('/healthz', async (_req, res) => {
 app.get('/manifest.json', (req, res) => {
   const mall = req.query.mall;
   res.json({
-    name: 'SmartWay AVM',
-    short_name: 'SmartWay',
+    name: 'Navirota',
+    short_name: 'Navirota',
     description: 'QR tabanlı akıllı AVM yönlendirme ve reklam platformu',
     start_url: mall ? `/${mall}` : '/',
     scope: '/',
@@ -282,7 +282,7 @@ app.use((err, _req, res, _next) => {
 });
 
 const httpServer = app.listen(PORT, () => {
-  console.log(`SmartWay AVM API çalışıyor → http://localhost:${PORT}`);
+  console.log(`Navirota API çalışıyor → http://localhost:${PORT}`);
 });
 
 // Zarif kapanış: BullMQ worker'ı (bkz. services/webhookQueue.js) açık bir

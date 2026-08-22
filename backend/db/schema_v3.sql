@@ -1,5 +1,5 @@
 -- =====================================================================
--- SmartWay AVM — Faz 3 Şema Eklentileri
+-- Navirota — Faz 3 Şema Eklentileri
 -- Uygulama: psql "$DATABASE_URL" -f db/schema_v3.sql   (schema_v2.sql'den SONRA)
 -- =====================================================================
 

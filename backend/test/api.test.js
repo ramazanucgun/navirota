@@ -285,7 +285,7 @@ test('webhook: oluşturulan webhook, ilgili olay gerçekleştiğinde gerçekten 
 
   assert.ok(received, 'webhook alıcısı gerçekten bir istek almalıydı');
   assert.equal(received.body.event, 'store.created');
-  assert.ok(received.headers['x-smartway-signature'], 'HMAC imza header\'ı olmalı');
+  assert.ok(received.headers['x-navirota-signature'], 'HMAC imza header\'ı olmalı');
 
   const deliveriesRes = await api(`/api/admin/webhooks/${webhook.id}/deliveries`, { headers: { Authorization: `Bearer ${accessToken}` } });
   const { deliveries } = await deliveriesRes.json();

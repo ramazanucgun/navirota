@@ -1,5 +1,5 @@
 -- =====================================================================
--- SmartWay AVM — Veritabanı Şeması (PostgreSQL)
+-- Navirota — Veritabanı Şeması (PostgreSQL)
 -- Multi-tenant mimari: her AVM (mall) bir "tenant" olarak tek şemada
 -- mall_id ile izole edilir (paylaşımlı-şema / row-level multi-tenancy).
 -- Bu yaklaşım yüzlerce AVM'ye tek dağıtımla hizmet vermeyi, aynı zamanda

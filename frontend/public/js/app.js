@@ -20,10 +20,10 @@ document.getElementById('privacyLink')?.setAttribute('href', `/privacy.html?mall
 // ZİYARETÇİ KİMLİĞİ (anonim, cihazda kalıcı — sadakat/favoriler/çekiliş için)
 // ---------------------------------------------------------------------
 function getVisitorId() {
-  let id = localStorage.getItem('sw_visitor_id');
+  let id = localStorage.getItem('nav_visitor_id');
   if (!id) {
     id = (crypto.randomUUID ? crypto.randomUUID() : 'v-' + Date.now() + '-' + Math.random().toString(16).slice(2));
-    localStorage.setItem('sw_visitor_id', id);
+    localStorage.setItem('nav_visitor_id', id);
   }
   return id;
 }
@@ -272,7 +272,7 @@ function renderActiveFloor() {
     : floor.stores;
 
   const startsOnThisFloor = state.startNode && floor.level_index === state.startNode.level_index;
-  SmartWayMap.render({
+  NavirotaMap.render({
     viewBox: floor.viewbox,
     svgContent: floor.svgContent,
     stores: visibleStores,
@@ -280,7 +280,7 @@ function renderActiveFloor() {
     edges: state.allEdges,
     startNodeId: startsOnThisFloor ? state.startNode.node_id : null,
   });
-  SmartWayMap.onStoreClick(openStoreModal);
+  NavirotaMap.onStoreClick(openStoreModal);
 }
 
 // ---------------------------------------------------------------------
@@ -414,7 +414,7 @@ async function startRouteTo(storeId, storeName) {
 
 function computeAndShowRoute() {
   if (!state.startNode || !state.activeRouteTargetStoreId) return;
-  const { NavGraph } = window.SmartWayRouteEngine;
+  const { NavGraph } = window.NavirotaRouteEngine;
   const graph = new NavGraph(state.allNodes, state.allEdges);
   const targetStore = state.floors.flatMap((f) => f.stores).find((s) => s.id === state.activeRouteTargetStoreId);
   if (!targetStore || !targetStore.entrance_node_id) { alert('Bu mağaza için rota hesaplanamadı.'); return; }
@@ -434,7 +434,7 @@ function computeAndShowRoute() {
   const floorChangeIdx = result.path.findIndex((id, i) => i > 0 && state.allNodes.find(n=>n.id===id).floorId !== state.allNodes.find(n=>n.id===state.startNode.node_id).floorId);
   const segment = floorChangeIdx === -1 ? result.path : result.path.slice(0, floorChangeIdx + 1);
   const nodesById = new Map(state.allNodes.map((n) => [n.id, n]));
-  SmartWayMap.drawRoute(segment.map((id) => nodesById.get(id)));
+  NavirotaMap.drawRoute(segment.map((id) => nodesById.get(id)));
 
   document.getElementById('routeSheet').hidden = false;
 
@@ -480,7 +480,7 @@ document.querySelectorAll('.chip[data-pref]').forEach((chip) => {
 });
 document.getElementById('routeClose')?.addEventListener('click', () => {
   document.getElementById('routeSheet').hidden = true;
-  SmartWayMap.clearRoute();
+  NavirotaMap.clearRoute();
   state.activeRouteTargetStoreId = null;
 });
 
@@ -539,9 +539,9 @@ document.getElementById('mallPopupClose')?.addEventListener('click', () => { doc
 // ---------------------------------------------------------------------
 // HARİTA KONTROLLERİ + PARK YERİ HATIRLATMA (demo)
 // ---------------------------------------------------------------------
-document.getElementById('zoomIn')?.addEventListener('click', () => SmartWayMap.zoomIn());
-document.getElementById('zoomOut')?.addEventListener('click', () => SmartWayMap.zoomOut());
-document.getElementById('zoomReset')?.addEventListener('click', () => SmartWayMap.resetZoom());
+document.getElementById('zoomIn')?.addEventListener('click', () => NavirotaMap.zoomIn());
+document.getElementById('zoomOut')?.addEventListener('click', () => NavirotaMap.zoomOut());
+document.getElementById('zoomReset')?.addEventListener('click', () => NavirotaMap.resetZoom());
 
 document.getElementById('parkingBtn')?.addEventListener('click', () => {
   const saved = localStorage.getItem('sw_parking_spot');
@@ -562,27 +562,27 @@ let pdrActive = false;
 document.getElementById('pdrBtn')?.addEventListener('click', async () => {
   const btn = document.getElementById('pdrBtn');
   if (pdrActive) {
-    SmartWayPDR.stop();
-    SmartWayMap.clearPdrDot();
+    NavirotaPDR.stop();
+    NavirotaMap.clearPdrDot();
     pdrActive = false;
     btn.style.background = '';
     return;
   }
   if (!state.startNode) { alert('Önce bir QR okutmalısınız.'); return; }
 
-  const ok = await SmartWayPDR.start((update) => {
+  const ok = await NavirotaPDR.start((update) => {
     // update.x/y, QR başlangıç noktasına göre PİKSEL ofseti — harita
     // koordinatına eklenir. Kat değiştirmez (yalnızca aynı kat içi tahmini iz).
     const absX = state.startNode.x + update.x;
     const absY = state.startNode.y + update.y;
-    SmartWayMap.updatePdrDot(absX, absY);
+    NavirotaMap.updatePdrDot(absX, absY);
   });
 
   if (!ok) {
     alert('Bu cihaz/tarayıcı hareket sensörlerini desteklemiyor ya da izin verilmedi.');
     return;
   }
-  SmartWayPDR.reset();
+  NavirotaPDR.reset();
   pdrActive = true;
   btn.style.background = 'var(--gold-soft)';
 });

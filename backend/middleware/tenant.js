@@ -4,7 +4,7 @@
 // Öncelik sırası:
 //   1) X-Mall-Slug header (mobil app / PWA için)
 //   2) ?mall=slug query param (QR linklerinde kullanılır: /r/K0-A-05?mall=terrace)
-//   3) subdomain (terrace.smartwayavm.com)
+//   3) subdomain (terrace.navirota.com)
 //
 // Bulunan mall, req.mall olarak sonraki handler'lara aktarılır; böylece
 // her sorgu WHERE mall_id = $1 ile izole edilir ve tenant'lar birbirinin

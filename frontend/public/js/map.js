@@ -4,7 +4,7 @@
 // noktası pulse animasyonu, kampanya rozetleri, animasyonlu rota çizgisi
 // ve hareket eden yön oku. Zoom/Pan pointer-events ile desteklenir.
 
-const SmartWayMap = (() => {
+const NavirotaMap = (() => {
   const svg = document.getElementById('mapSvg');
   let currentViewBox = { x: 0, y: 0, w: 1000, h: 600 };
   let baseViewBox = { ...currentViewBox };
@@ -223,4 +223,4 @@ const SmartWayMap = (() => {
   };
 })();
 
-window.SmartWayMap = SmartWayMap;
+window.NavirotaMap = NavirotaMap;

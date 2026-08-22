@@ -16,13 +16,13 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: smartway
-          POSTGRES_PASSWORD: smartway
-          POSTGRES_DB: smartway_avm_ci
+          POSTGRES_USER: navirota
+          POSTGRES_PASSWORD: navirota
+          POSTGRES_DB: navirota_ci
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U smartway"
+          --health-cmd "pg_isready -U navirota"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -38,7 +38,7 @@ jobs:
 
     env:
       NODE_ENV: test
-      DATABASE_URL: postgresql://smartway:smartway@localhost:5432/smartway_avm_ci
+      DATABASE_URL: postgresql://navirota:navirota@localhost:5432/navirota_ci
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: ci-test-secret-not-for-production
       IYZICO_MOCK: 'true'

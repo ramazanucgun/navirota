@@ -1,6 +1,6 @@
 {
-  "name": "SmartWay AVM",
-  "short_name": "SmartWay",
+  "name": "Navirota",
+  "short_name": "Navirota",
   "description": "QR tabanlı akıllı AVM yönlendirme ve reklam platformu",
   "start_url": "/",
   "scope": "/",

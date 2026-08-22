@@ -3,7 +3,7 @@
 
 const API_BASE = '/api';
 const MALL_SLUG = new URLSearchParams(location.search).get('mall') || 'terrace';
-const visitorId = localStorage.getItem('sw_visitor_id');
+const visitorId = localStorage.getItem('nav_visitor_id');
 
 const $ = (id) => document.getElementById(id);
 
@@ -44,7 +44,7 @@ $('exportBtn')?.addEventListener('click', async () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `smartway-verilerim-${visitorId}.json`;
+    a.download = `navirota-verilerim-${visitorId}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -71,7 +71,7 @@ $('confirmDeleteBtn')?.addEventListener('click', async () => {
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || 'Silme işlemi başarısız oldu.');
 
-    localStorage.removeItem('sw_visitor_id');
+    localStorage.removeItem('nav_visitor_id');
     $('confirmBox').hidden = true;
     $('doneMessage').textContent = body.message || 'Verileriniz kalıcı olarak silindi.';
     $('doneBox').hidden = false;

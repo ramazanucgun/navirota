@@ -33,7 +33,7 @@ function getTransport() {
  */
 async function sendMail({ to, subject, html, text }) {
   const transport = getTransport();
-  const from = process.env.SMTP_FROM || 'SmartWay AVM <no-reply@smartwayavm.com>';
+  const from = process.env.SMTP_FROM || 'Navirota <no-reply@navirota.com>';
 
   if (!transport) {
     // Dev-mode fallback: gerçek e-posta göndermek yerine loglar. Bu, SMTP
@@ -51,7 +51,7 @@ async function sendMail({ to, subject, html, text }) {
 async function sendPasswordResetEmail(to, resetUrl) {
   return sendMail({
     to,
-    subject: 'SmartWay AVM — Parola Sıfırlama',
+    subject: 'Navirota — Parola Sıfırlama',
     text: `Parolanızı sıfırlamak için şu bağlantıya tıklayın (1 saat geçerlidir): ${resetUrl}\n\nBu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz.`,
     html: `<p>Parolanızı sıfırlamak için aşağıdaki bağlantıya tıklayın (1 saat geçerlidir):</p><p><a href="${resetUrl}">${resetUrl}</a></p><p>Bu isteği siz yapmadıysanız bu e-postayı yok sayabilirsiniz.</p>`,
   });

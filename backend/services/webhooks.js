@@ -27,7 +27,7 @@ async function attemptDelivery(webhook, event, payload) {
   try {
     const res = await fetch(webhook.target_url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-SmartWay-Signature': signature },
+      headers: { 'Content-Type': 'application/json', 'X-Navirota-Signature': signature },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(5000),
     });

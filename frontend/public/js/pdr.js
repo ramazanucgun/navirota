@@ -15,7 +15,7 @@
 // standart hareket sensörü API'lerini kullanır. iOS 13+'da izin istemi
 // gerekir (requestPermission).
 
-const SmartWayPDR = (() => {
+const NavirotaPDR = (() => {
   let listening = false;
   let stepCount = 0;
   let heading = 0;           // derece, 0 = kuzey
@@ -101,4 +101,4 @@ const SmartWayPDR = (() => {
   return { start, stop, reset, isListening: () => listening };
 })();
 
-window.SmartWayPDR = SmartWayPDR;
+window.NavirotaPDR = NavirotaPDR;

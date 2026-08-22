@@ -8,8 +8,8 @@
 //    için internet olmasa da en son senkronize edilen node/edge/mağaza verisiyle
 //    QR okutma → rota alma akışı çalışmaya devam eder.
 
-const SHELL_CACHE = 'smartway-shell-v1';
-const DATA_CACHE = 'smartway-data-v1';
+const SHELL_CACHE = 'navirota-shell-v1';
+const DATA_CACHE = 'navirota-data-v1';
 
 const SHELL_ASSETS = [
   '/', '/index.html', '/manifest.json',

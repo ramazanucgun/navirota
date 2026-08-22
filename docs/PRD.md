@@ -1,4 +1,4 @@
-# SmartWay AVM — Ürün Gereksinim Dokümanı (PRD) v1.0
+# Navirota — Ürün Gereksinim Dokümanı (PRD) v1.0
 
 **Durum:** Onay bekliyor — geliştirme bu doküman onaylanmadan başlamayacak.
 **Kapsam:** QR-tabanlı Indoor Wayfinding + Reklam/Kampanya SaaS Platformu
@@ -37,7 +37,7 @@ Türkiye'deki AVM'lerin büyük çoğunluğu ziyaretçi yönlendirme sorununu ya
 - AVM yönetimine doğrudan gelir getirmez; yalnızca gider kalemidir.
 - Küçük ve orta ölçekli AVM'ler için yatırım geri dönüşü (ROI) belirsizdir.
 
-**SmartWay AVM'nin farkı:** Donanım yatırımı sıfıra yakın (yalnızca QR etiket basımı), konumlandırma "kullanıcı beyanı + graf tabanlı rota" ile çözülür, ve sistem AVM'ye **reklam ve kampanya geliri** ile kendini amorti eder. Bu, ürünü bir "maliyet merkezi" değil bir "gelir merkezi" olarak konumlandırır — satış sürecinde en güçlü argümanımız budur.
+**Navirota'nın farkı:** Donanım yatırımı sıfıra yakın (yalnızca QR etiket basımı), konumlandırma "kullanıcı beyanı + graf tabanlı rota" ile çözülür, ve sistem AVM'ye **reklam ve kampanya geliri** ile kendini amorti eder. Bu, ürünü bir "maliyet merkezi" değil bir "gelir merkezi" olarak konumlandırır — satış sürecinde en güçlü argümanımız budur.
 
 ### 1.2 Hedef Kullanıcılar (Persona)
 
@@ -47,7 +47,7 @@ Türkiye'deki AVM'lerin büyük çoğunluğu ziyaretçi yönlendirme sorununu ya
 | **Mağaza Yöneticisi** | Kampanya yayınlamak, görünürlük kazanmak | Kendi kendine yönetebilme (self-servis) |
 | **AVM Operasyon Müdürü** | Doluluk/yoğunluk verisi, reklam geliri | Aylık gelir raporu, ısı haritası |
 | **AVM Pazarlama Müdürü** | Etkinlik/duyuru yayınlamak, marka sponsorlukları satmak | Kampanya oluşturma <5 dk |
-| **SmartWay Super Admin (biz)** | Çoklu AVM'yi tek panelden yönetmek, lisans/fatura takibi | Yeni AVM onboarding <1 gün |
+| **Navirota Super Admin (biz)** | Çoklu AVM'yi tek panelden yönetmek, lisans/fatura takibi | Yeni AVM onboarding <1 gün |
 | **Erişilebilirlik ihtiyacı olan ziyaretçi** | Merdivensiz/asansörlü rota | Rota tercihi ile garanti edilen erişilebilir yol |
 
 ### 1.3 Temel Kullanım Senaryosu (Happy Path)
@@ -112,7 +112,7 @@ Kullanıcının orijinal spesifikasyonuna ek olarak, dünya standardındaki wayf
 
 ### 2.3 Sonuç
 
-Pazardaki oyuncuların neredeyse tamamı 2026 itibarıyla "beacon-free" konumlandırmaya yöneliyor; bu bizim QR-öncelikli stratejimizi doğruluyor. Ancak hiçbiri **reklam/kampanya platformunu birincil gelir modeli** olarak konumlandırmıyor — çoğu SaaS lisans ücretiyle geçiniyor. SmartWay AVM'nin rekabet avantajı, düşük kurulum maliyeti + reklam geliri paylaşımı modelinin birleşimidir; bu, özellikle fiyata duyarlı Türkiye orta ölçekli AVM pazarında güçlü bir konumlandırma sağlar.
+Pazardaki oyuncuların neredeyse tamamı 2026 itibarıyla "beacon-free" konumlandırmaya yöneliyor; bu bizim QR-öncelikli stratejimizi doğruluyor. Ancak hiçbiri **reklam/kampanya platformunu birincil gelir modeli** olarak konumlandırmıyor — çoğu SaaS lisans ücretiyle geçiniyor. Navirota'nın rekabet avantajı, düşük kurulum maliyeti + reklam geliri paylaşımı modelinin birleşimidir; bu, özellikle fiyata duyarlı Türkiye orta ölçekli AVM pazarında güçlü bir konumlandırma sağlar.
 
 ---
 
@@ -295,7 +295,7 @@ Bugünkü model 2D SVG (x, y + floor_id) kullanır. 3D desteğine geçiş için 
 - **Yazdırılabilir şablon:** Logo + AVM teması + QR + kod etiketi içeren, standart etiket yazıcı boyutlarına (örn. 5x5 cm) uygun PDF üretimi (pdf modülü ile).
 - **Yaşam döngüsü takibi:** `printed_at` alanı ile hangi QR'ların fiziksel olarak basılıp asıldığı takip edilir; saha ekibi checklist'i buradan türetilir.
 - **Yeniden atama:** Bir node fiziksel olarak taşınırsa (örn. koridor düzenlemesi), QR kodu aynı kalıp yalnızca hedef node güncellenebilir — fiziksel etiketi değiştirmeye gerek kalmaz.
-- **Offline okuma:** QR içeriği yalnızca `https://smartwayavm.com/r/{mall_slug}/{code}` formatında sabit bir URL'dir; service worker bu path'i önbellekten çözebilir, node/graf verisi cihazda yoksa dahi kod bilgisi (kat + tip) offline gösterilebilir, tam rota ise senkron olunca hesaplanır.
+- **Offline okuma:** QR içeriği yalnızca `https://navirota.com/r/{mall_slug}/{code}` formatında sabit bir URL'dir; service worker bu path'i önbellekten çözebilir, node/graf verisi cihazda yoksa dahi kod bilgisi (kat + tip) offline gösterilebilir, tam rota ise senkron olunca hesaplanır.
 
 ---
 

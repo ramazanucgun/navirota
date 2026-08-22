@@ -1,4 +1,4 @@
-# SmartWay AVM
+# Navirota
 
 QR tabanlı, ekstra donanım gerektirmeyen Indoor Wayfinding + Reklam/Kampanya SaaS platformu.
 
@@ -34,7 +34,7 @@ npm start                                     # http://localhost:4000
 |---|---|---|
 | AVM Yönetimi | `/admin/mall-admin.html` | `admin@terrace-avm.com` / `MallAdmin123!` |
 | Mağaza Paneli | `/admin/store-panel.html` | `lcwaikiki@terrace-avm.com` / `StoreManager123!` |
-| Super Admin | `/admin/super-admin.html` | `super@smartwayavm.com` / `SuperAdmin123!` |
+| Super Admin | `/admin/super-admin.html` | `super@navirota.com` / `SuperAdmin123!` |
 
 ## Faz 4 — Yeni Özellikler
 
@@ -54,7 +54,7 @@ Her panel API'si kendi **benzersiz path önekine** sahiptir (`/api/admin`, `/api
 
 ## Proje Durumu
 
-PRD'nin 4 fazı da tamamlandı ve her biri gerçek bir PostgreSQL örneğine karşı uçtan uca test edildi. Ardından **Faz 5 — Güvenlik Sertleştirme**, **Faz 6 — Ödeme/Abonelik (iyzico)**, **Faz 7 — CI/CD & İzleme**, **Faz 8 — Ölçeklenebilirlik**, **Faz 9 — KVKK Uyumluluğu** ve **Faz 10 — LLM Arama & Webhook Retry** tamamlandı. Denetim raporunda (`SmartWayAVM_Denetim_Raporu.md`) tespit edilen tüm maddeler kapatıldı; kalan geliştirmeler artık gerçek donanım/altyapı gerektiren opsiyonel işler (BLE beacon donanımı, okuma replikası canlı testi).
+PRD'nin 4 fazı da tamamlandı ve her biri gerçek bir PostgreSQL örneğine karşı uçtan uca test edildi. Ardından **Faz 5 — Güvenlik Sertleştirme**, **Faz 6 — Ödeme/Abonelik (iyzico)**, **Faz 7 — CI/CD & İzleme**, **Faz 8 — Ölçeklenebilirlik**, **Faz 9 — KVKK Uyumluluğu** ve **Faz 10 — LLM Arama & Webhook Retry** tamamlandı. Denetim raporunda (`NavirotaAVM_Denetim_Raporu.md`) tespit edilen tüm maddeler kapatıldı; kalan geliştirmeler artık gerçek donanım/altyapı gerektiren opsiyonel işler (BLE beacon donanımı, okuma replikası canlı testi).
 
 ## Faz 10 — LLM Arama & Webhook Retry
 
