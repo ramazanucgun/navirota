@@ -58,6 +58,7 @@ async function renderView(view) {
     if (view === 'users') return await renderUsers();
     if (view === 'signage') return await renderSignage();
     if (view === 'integrations') return await renderIntegrations();
+    if (view === 'billing') return await renderBilling();
     if (view === 'support') return await renderSupport();
   } catch (err) {
     content.innerHTML = `<div class="empty-state">Hata: ${escapeHtml(err.message)}</div>`;
@@ -955,6 +956,77 @@ async function renderIntegrations() {
       alert(`Webhook oluşturuldu. İmza sırrı (secret) — YALNIZCA ŞİMDİ gösteriliyor:\n\n${r.webhook.secret}`);
       renderIntegrations();
     } catch (err) { toast(err.message, true); }
+  });
+}
+
+// ---------------------------------------------------------------------
+// FATURALAMA / ABONELİK (iyzico)
+// ---------------------------------------------------------------------
+const PLAN_STATUS_LABEL = { trial: 'Deneme', active: 'Aktif', suspended: 'Askıya Alındı', cancelled: 'İptal Edildi' };
+const INVOICE_STATUS_LABEL = { pending: 'Bekliyor', paid: 'Ödendi', failed: 'Başarısız', refunded: 'İade Edildi' };
+
+async function renderBilling() {
+  const [{ subscription, invoices }, { plans }] = await Promise.all([
+    AdminAuth.api('/api/admin/billing'), AdminAuth.api('/api/admin/billing/plans'),
+  ]);
+
+  content.innerHTML = `
+    ${header('Faturalama & Abonelik', 'Mevcut planınızı görüntüleyin, yükseltin ve fatura geçmişinizi inceleyin.')}
+    <div class="panel"><div class="panel__body">
+      <p><strong>Mevcut Plan:</strong> ${escapeHtml(subscription?.plan_name || 'Atanmamış')}
+         <span class="badge badge--${subscription?.status === 'active' ? 'success' : 'neutral'}">${PLAN_STATUS_LABEL[subscription?.status] || subscription?.status || '—'}</span></p>
+      ${subscription?.trial_ends_at ? `<p class="muted">Deneme süresi bitişi: ${fmtDate(subscription.trial_ends_at)}</p>` : ''}
+      ${subscription?.current_period_end ? `<p class="muted">Sonraki yenileme: ${fmtDate(subscription.current_period_end)}</p>` : ''}
+    </div></div>
+
+    <div class="panel">
+      <div class="panel__head"><h3>Planlar</h3></div>
+      <div class="panel__body" style="display:flex; gap:16px; flex-wrap:wrap;">
+        ${plans.map((p) => `
+          <div class="plan-card" style="border:1px solid var(--line-strong); border-radius:14px; padding:18px; min-width:220px; ${p.code === subscription?.plan_code ? 'border-color:var(--gold); background:var(--gold-soft);' : ''}">
+            <h4 style="margin:0 0 6px;">${escapeHtml(p.name)}</h4>
+            <p style="font-size:22px; font-weight:600; margin:0 0 10px;">₺${Number(p.monthly_price).toLocaleString('tr-TR')}<span style="font-size:12px; font-weight:400;">/ay</span></p>
+            <ul style="font-size:13px; color:var(--ink-soft); padding-left:18px; margin:0 0 14px;">
+              <li>${p.max_stores} mağazaya kadar</li>
+              <li>${p.max_floors} kata kadar</li>
+              <li>${p.max_admins} panel yöneticisi</li>
+              ${p.features?.ai_search ? '<li>AI destekli arama</li>' : ''}
+              ${p.features?.heatmap ? '<li>Isı haritası analitiği</li>' : ''}
+              ${p.features?.digital_signage ? '<li>Dijital signage</li>' : ''}
+            </ul>
+            ${p.code === subscription?.plan_code
+              ? '<button class="btn btn--ghost btn--sm" disabled>Mevcut Plan</button>'
+              : `<button class="btn btn--gold btn--sm" data-checkout="${p.id}">${(subscription && plans.findIndex(x=>x.code===subscription.plan_code) < plans.findIndex(x=>x.id===p.id)) ? 'Yükselt' : 'Bu Plana Geç'}</button>`}
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel__head"><h3>Fatura Geçmişi</h3></div>
+      <table class="data-table">
+        <thead><tr><th>Tarih</th><th>Plan</th><th>Tutar</th><th>Dönem</th><th>Durum</th></tr></thead>
+        <tbody>${invoices.length ? invoices.map((inv) => `
+          <tr>
+            <td>${fmtDate(inv.created_at)}</td>
+            <td>${escapeHtml(inv.plan_code || '—')}</td>
+            <td>₺${Number(inv.amount).toLocaleString('tr-TR')} ${inv.currency}</td>
+            <td>${fmtDate(inv.period_start)} – ${fmtDate(inv.period_end)}</td>
+            <td><span class="badge badge--${inv.status === 'paid' ? 'success' : inv.status === 'failed' ? 'danger' : 'neutral'}">${INVOICE_STATUS_LABEL[inv.status] || inv.status}</span></td>
+          </tr>`).join('') : `<tr><td colspan="5" class="empty-state">Henüz fatura yok.</td></tr>`}</tbody>
+      </table>
+    </div>`;
+
+  document.querySelectorAll('[data-checkout]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true; btn.textContent = 'Yönlendiriliyor…';
+      try {
+        const r = await AdminAuth.api('/api/admin/billing/checkout', { method: 'POST', body: { planId: btn.dataset.checkout } });
+        window.location.href = r.paymentPageUrl;
+      } catch (err) {
+        toast(err.message, true);
+        btn.disabled = false; btn.textContent = 'Tekrar Dene';
+      }
+    });
   });
 }
 

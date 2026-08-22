@@ -4,6 +4,7 @@ const { query } = require('../../db/pool');
 const { hashPassword } = require('../../services/auth');
 const { recordAudit } = require('../../services/auditLog');
 const { isStrongEnoughPassword } = require('../../services/validation');
+const { isLimitReached } = require('../../services/planLimits');
 
 const router = express.Router();
 
@@ -44,6 +45,20 @@ router.post('/users', async (req, res, next) => {
     if (!email || !password || !role) return res.status(400).json({ error: 'email, password, role zorunludur.' });
     if (!['mall_admin', 'store_manager'].includes(role)) return res.status(400).json({ error: 'Geçersiz rol.' });
     if (!isStrongEnoughPassword(password)) return res.status(400).json({ error: 'Şifre en az 8 karakter olmalıdır.' });
+
+    // Yalnızca mall_admin davetleri plan limitine tabidir (bkz. planLimits.js
+    // COUNT_QUERIES.admins yorum satırı) — role request body'den geldiği için
+    // middleware yerine koşullu saf kontrol (isLimitReached) kullanılıyor.
+    if (role === 'mall_admin') {
+      const { reached, limit } = await isLimitReached('admins', req.mall.id);
+      if (reached) {
+        return res.status(402).json({
+          error: `Planınızın panel yöneticisi limitine (${limit}) ulaştınız. Devam etmek için planınızı yükseltin.`,
+          code: 'PLAN_LIMIT_REACHED',
+          resource: 'admins',
+        });
+      }
+    }
 
     const hash = await hashPassword(password);
     const { rows } = await query(

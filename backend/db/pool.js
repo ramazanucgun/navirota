@@ -31,4 +31,28 @@ async function query(text, params = []) {
 // burası değişir, çağıran kodun hiçbiri değişmez.
 const readQuery = query;
 
-module.exports = { pool, query, readQuery };
+/**
+ * Birden fazla yazmanın hep birlikte başarılı ya da hep birlikte geri
+ * alınması gereken yerlerde kullanılır (bkz. routes/superadmin/index.js'te
+ * elle yazılmış BEGIN/COMMIT/ROLLBACK deseni — burada tekrar kullanılabilir
+ * bir yardımcıya çıkarıldı).
+ *
+ * @param {(client: import('pg').PoolClient) => Promise<T>} fn
+ * @returns {Promise<T>}
+ */
+async function withTransaction(fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { pool, query, readQuery, withTransaction };

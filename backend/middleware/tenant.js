@@ -24,7 +24,10 @@ async function resolveTenant(req, res, next) {
     }
 
     const { rows } = await query(
-      'SELECT id, slug, name, status, theme, default_locale, supported_locales FROM malls WHERE slug = $1',
+      `SELECT m.id, m.slug, m.name, m.status, m.theme, m.default_locale, m.supported_locales,
+              p.features AS plan_features
+       FROM malls m LEFT JOIN plans p ON p.id = m.plan_id
+       WHERE m.slug = $1`,
       [slug]
     );
 

@@ -14,6 +14,7 @@ const MALL_SLUG = new URLSearchParams(location.search).get('mall')
 // PWA manifest'ini bu AVM'ye göre günceller ("Ana ekrana ekle" doğru
 // AVM'nin temiz URL'ine (örn. /iyasparkavm) açılsın diye).
 document.getElementById('manifestLink')?.setAttribute('href', `/manifest.json?mall=${encodeURIComponent(MALL_SLUG)}`);
+document.getElementById('privacyLink')?.setAttribute('href', `/privacy.html?mall=${encodeURIComponent(MALL_SLUG)}`);
 
 // ---------------------------------------------------------------------
 // ZİYARETÇİ KİMLİĞİ (anonim, cihazda kalıcı — sadakat/favoriler/çekiliş için)

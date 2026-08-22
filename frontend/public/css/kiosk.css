@@ -1,0 +1,19 @@
+/* frontend/public/css/kiosk.css
+   Önceden kiosk.html içinde inline <style> idi; sıkı bir CSP (script-src
+   'self', inline script yok) uygulayabilmek için harici dosyaya taşındı.
+   (Not: script-src'nin aksine style-src'de hâlâ 'unsafe-inline' açık,
+   bu yüzden bu taşıma zorunlu değildi ama tutarlılık için yapıldı.) */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; background: #0c0a08; overflow: hidden; font-family: 'Sora', sans-serif; }
+#pairScreen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #f6f3ec; gap: 18px; }
+#pairScreen input { font-size: 28px; padding: 14px 22px; border-radius: 12px; border: none; text-align: center; letter-spacing: 4px; width: 260px; text-transform: uppercase; }
+#pairScreen button { font-size: 16px; padding: 12px 26px; border-radius: 100px; border: none; background: #C79A3E; color: #1a1207; font-weight: 700; cursor: pointer; }
+#pairScreen p { opacity: .6; font-size: 13px; }
+#pairScreen .pairScreen__logo { font-size: 40px; font-weight: 600; }
+#pairScreen .pairScreen__title { font-weight: 400; font-size: 22px; }
+#stage { position: fixed; inset: 0; display: none; background: #000; }
+#stage img, #stage video { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; opacity: 0; transition: opacity .8s ease; }
+#stage img.active, #stage video.active { opacity: 1; }
+#stage .stage__waiting { color: #666; display: flex; align-items: center; justify-content: center; height: 100%; font-family: sans-serif; }
+#deviceLabel { position: fixed; bottom: 16px; right: 20px; color: rgba(255,255,255,0.35); font-size: 12px; font-family: sans-serif; z-index: 10; }
+#errorBanner { position: fixed; top: 0; left: 0; right: 0; background: #B4432E; color: #fff; text-align: center; padding: 10px; font-size: 13px; display: none; z-index: 20; }

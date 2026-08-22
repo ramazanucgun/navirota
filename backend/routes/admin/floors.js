@@ -2,6 +2,7 @@
 const express = require('express');
 const { query } = require('../../db/pool');
 const { recordAudit } = require('../../services/auditLog');
+const { enforceLimit } = require('../../services/planLimits');
 
 const router = express.Router();
 
@@ -20,7 +21,7 @@ router.get('/floors', async (req, res, next) => {
 });
 
 // POST /api/admin/floors  { levelIndex, label, viewbox }
-router.post('/floors', async (req, res, next) => {
+router.post('/floors', enforceLimit('floors'), async (req, res, next) => {
   try {
     const { levelIndex, label, viewbox } = req.body;
     if (levelIndex === undefined || !label) return res.status(400).json({ error: 'levelIndex ve label zorunludur.' });

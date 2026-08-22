@@ -15,7 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const { Client } = require('pg');
 
-const PHASE_FILES = ['schema_v2.sql', 'schema_v3.sql', 'schema_v4.sql'];
+const PHASE_FILES = ['schema_v2.sql', 'schema_v3.sql', 'schema_v4.sql', 'schema_v5.sql', 'schema_v6.sql', 'schema_v7.sql'];
 
 async function migrate() {
   console.log('Database migration başlıyor...');

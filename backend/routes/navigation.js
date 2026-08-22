@@ -75,7 +75,10 @@ router.get('/search', async (req, res, next) => {
 
     // Doğal dil / az sonuçlu sorgularda AI niyet çözümlemesiyle kategori
     // bazlı öneriye düş (PRD Bölüm 10 — "Doğal dil mağaza araması").
-    const { categories, isNaturalLanguage } = resolveIntent(q);
+    // Bu, plans.features.ai_search=false olan planlarda (örn. Starter)
+    // devre dışıdır — o planlarda yalnızca doğrudan isim eşleşmesi çalışır.
+    const aiSearchEnabled = req.mall.plan_features?.ai_search !== false;
+    const { categories, isNaturalLanguage } = aiSearchEnabled ? await resolveIntent(q) : { categories: [], isNaturalLanguage: false };
     if (categories.length && (results.length === 0 || isNaturalLanguage)) {
       matchedCategoryCode = categories[0];
       const catRes = await query(

@@ -3,6 +3,7 @@ const express = require('express');
 const { query } = require('../../db/pool');
 const { recordAudit } = require('../../services/auditLog');
 const { requireFields, handleDbError } = require('../../services/validation');
+const { enforceLimit } = require('../../services/planLimits');
 
 const router = express.Router();
 
@@ -26,7 +27,7 @@ router.get('/stores', async (req, res, next) => {
 });
 
 // POST /api/admin/stores — yeni mağaza ekle (giriş kullanıcısı ile birlikte)
-router.post('/stores', async (req, res, next) => {
+router.post('/stores', enforceLimit('stores'), async (req, res, next) => {
   try {
     const { name, slug, floorId, entranceNodeId, unitNo, categoryCodes = [], managerEmail, managerPassword } = req.body;
     if (!name || !slug || !floorId) return res.status(400).json({ error: 'name, slug ve floorId zorunludur.' });

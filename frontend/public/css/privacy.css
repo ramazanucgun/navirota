@@ -1,0 +1,7 @@
+/* frontend/public/css/privacy.css */
+.privacy-page { max-width: 480px; margin: 0 auto; min-height: 100vh; }
+.privacy-content { padding: 20px 18px 60px; }
+.privacy-intro { font-size: 13.5px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 18px; }
+.privacy-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+.privacy-id { font-size: 12px; color: var(--ink-soft); margin-bottom: 14px; word-break: break-all; }
+.privacy-status { text-align: center; font-size: 13px; padding: 10px; border-radius: 10px; background: var(--gold-soft); }

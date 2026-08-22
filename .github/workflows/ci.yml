@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Gerçek bir PostgreSQL örneği — testler mock/in-memory DB değil,
+    # gerçek bir Postgres'e karşı çalışır (bkz. backend/test/api.test.js).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: smartway
+          POSTGRES_PASSWORD: smartway
+          POSTGRES_DB: smartway_avm_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smartway"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://smartway:smartway@localhost:5432/smartway_avm_ci
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-test-secret-not-for-production
+      IYZICO_MOCK: 'true'
+      AI_SEARCH_MOCK: 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run migrations
+        working-directory: backend
+        run: node db/migrate.js
+
+      - name: Seed database
+        working-directory: backend
+        run: node db/seed.js
+
+      - name: Run tests
+        working-directory: backend
+        run: npm test
+
+      - name: npm audit (yalnızca yüksek/kritik seviyeyi başarısız sayar)
+        working-directory: backend
+        run: npm audit --audit-level=high
+        continue-on-error: false

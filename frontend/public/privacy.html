@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SmartWay AVM — Verilerim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/css/style.css" />
+<link rel="stylesheet" href="/css/privacy.css" />
+</head>
+<body>
+<div class="privacy-page">
+  <header class="topbar">
+    <div class="topbar__brand">
+      <span class="topbar__mark">SW</span>
+      <div><p class="topbar__mall">Verilerim &amp; Gizlilik</p></div>
+    </div>
+    <a class="icon-btn" href="/">←</a>
+  </header>
+
+  <main class="privacy-content">
+    <p class="privacy-intro">
+      SmartWay AVM, sizi bir hesapla değil, yalnızca cihazınızda saklanan anonim bir kimlikle tanır
+      (isim, telefon, e-posta gibi bir bilgi istemeyiz). Aşağıdan bu kimlikle ilişkilendirilmiş
+      sadakat puanı, favoriler ve çekiliş katılımlarınızı indirebilir ya da kalıcı olarak silebilirsiniz
+      (6698 sayılı KVKK md. 11).
+    </p>
+
+    <div id="noVisitorBox" class="privacy-card" hidden>
+      <p>Bu cihazda henüz kayıtlı bir veri bulunmuyor.</p>
+    </div>
+
+    <div id="mainBox" class="privacy-card" hidden>
+      <p class="privacy-id">Cihaz kimliğiniz: <code id="visitorIdLabel"></code></p>
+      <button class="btn btn--gold btn--block" id="exportBtn">📥 Verilerimi İndir (JSON)</button>
+      <button class="btn btn--dark btn--block" id="deleteBtn" style="margin-top:10px; background:#B4432E;">🗑️ Verilerimi Kalıcı Olarak Sil</button>
+    </div>
+
+    <div id="confirmBox" class="privacy-card" hidden>
+      <p><strong>Emin misiniz?</strong> Sadakat puanınız, favorileriniz ve çekiliş katılımlarınız kalıcı olarak silinecek. Bu işlem geri alınamaz.</p>
+      <button class="btn btn--dark btn--block" id="confirmDeleteBtn" style="background:#B4432E;">Evet, Kalıcı Olarak Sil</button>
+      <button class="btn btn--gold btn--block" id="cancelDeleteBtn" style="margin-top:10px;">Vazgeç</button>
+    </div>
+
+    <div id="doneBox" class="privacy-card" hidden>
+      <p id="doneMessage"></p>
+    </div>
+
+    <div id="statusMsg" class="privacy-status" hidden></div>
+  </main>
+</div>
+<script src="/js/privacy.js"></script>
+</body>
+</html>
