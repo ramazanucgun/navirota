@@ -10,6 +10,7 @@ router.get('/ads', async (req, res, next) => {
   try {
     const { rows } = await query(
       `SELECT a.*, s.code AS slot_code, s.name AS slot_name,
+              (SELECT array_agg(code) FROM categories WHERE id = ANY(a.target_categories)) AS target_category_codes,
               COALESCE(imp.count, 0) AS impressions, COALESCE(clk.count, 0) AS clicks
        FROM ads a
        JOIN ad_slots s ON s.id = a.slot_id
@@ -62,18 +63,49 @@ router.post('/ads', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// PATCH /api/admin/ads/:id  { isActive, priority }
+// PATCH /api/admin/ads/:id — tam düzenleme (yalnızca isActive/priority değil)
 router.patch('/ads/:id', async (req, res, next) => {
   try {
-    const { isActive, priority } = req.body;
+    const {
+      advertiserName, creativeType, creativeUrl, clickUrl,
+      targetCategoryCodes, targetFloorId, isActive, priority, startsAt, endsAt,
+    } = req.body;
+
+    let categoryIds;
+    if (Array.isArray(targetCategoryCodes)) {
+      const cats = await query('SELECT id FROM categories WHERE code = ANY($1)', [targetCategoryCodes]);
+      categoryIds = cats.rows.map((c) => c.id);
+    }
+
     const { rows } = await query(
-      `UPDATE ads SET is_active = COALESCE($1, is_active), priority = COALESCE($2, priority)
-       WHERE id = $3 AND mall_id = $4 RETURNING *`,
-      [isActive, priority, req.params.id, req.mall.id]
+      `UPDATE ads SET
+         advertiser_name = COALESCE($1, advertiser_name),
+         creative_type = COALESCE($2, creative_type),
+         creative_url = COALESCE($3, creative_url),
+         click_url = COALESCE($4, click_url),
+         target_categories = COALESCE($5, target_categories),
+         target_floor_id = COALESCE($6, target_floor_id),
+         is_active = COALESCE($7, is_active),
+         priority = COALESCE($8, priority),
+         starts_at = COALESCE($9, starts_at),
+         ends_at = COALESCE($10, ends_at)
+       WHERE id = $11 AND mall_id = $12 RETURNING *`,
+      [advertiserName, creativeType, creativeUrl, clickUrl, categoryIds, targetFloorId,
+        isActive, priority, startsAt, endsAt, req.params.id, req.mall.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Reklam bulunamadı.' });
     await recordAudit({ req, entity: 'ad', entityId: req.params.id, action: 'update', diff: req.body });
     res.json({ ad: rows[0] });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/admin/ads/:id
+router.delete('/ads/:id', async (req, res, next) => {
+  try {
+    const { rowCount } = await query('DELETE FROM ads WHERE id = $1 AND mall_id = $2', [req.params.id, req.mall.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Reklam bulunamadı.' });
+    await recordAudit({ req, entity: 'ad', entityId: req.params.id, action: 'delete' });
+    res.json({ ok: true });
   } catch (err) { next(err); }
 });
 

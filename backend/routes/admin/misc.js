@@ -76,10 +76,13 @@ router.post('/users', async (req, res, next) => {
 // PATCH /api/admin/users/:id — pasifleştir/aktifleştir
 router.patch('/users/:id', async (req, res, next) => {
   try {
-    const { isActive } = req.body;
+    const { fullName, isActive } = req.body;
     const { rows } = await query(
-      `UPDATE users SET is_active = COALESCE($1, is_active) WHERE id = $2 AND mall_id = $3 RETURNING id, is_active`,
-      [isActive, req.params.id, req.mall.id]
+      `UPDATE users SET
+         full_name = COALESCE($1, full_name),
+         is_active = COALESCE($2, is_active)
+       WHERE id = $3 AND mall_id = $4 RETURNING id, email, full_name, role, is_active`,
+      [fullName, isActive, req.params.id, req.mall.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
     await recordAudit({ req, entity: 'user', entityId: req.params.id, action: 'update', diff: req.body });
@@ -112,6 +115,46 @@ router.post('/raffles', async (req, res, next) => {
     );
     await recordAudit({ req, entity: 'raffle', entityId: rows[0].id, action: 'create', diff: req.body });
     res.status(201).json({ raffle: rows[0] });
+  } catch (err) { next(err); }
+});
+
+// PATCH /api/admin/raffles/:id — tam düzenleme (yalnızca henüz çekiliş yapılmamışsa)
+router.patch('/raffles/:id', async (req, res, next) => {
+  try {
+    const existing = await query('SELECT drawn_at FROM raffles WHERE id = $1 AND mall_id = $2', [req.params.id, req.mall.id]);
+    if (!existing.rows.length) return res.status(404).json({ error: 'Çekiliş bulunamadı.' });
+    if (existing.rows[0].drawn_at) {
+      return res.status(409).json({ error: 'Kazananı zaten belirlenmiş bir çekiliş düzenlenemez.' });
+    }
+    const { title, description, prizeLabel, entryCostPoints, isActive, startsAt, endsAt } = req.body;
+    const { rows } = await query(
+      `UPDATE raffles SET
+         title = COALESCE($1, title),
+         description = COALESCE($2, description),
+         prize_label = COALESCE($3, prize_label),
+         entry_cost_points = COALESCE($4, entry_cost_points),
+         is_active = COALESCE($5, is_active),
+         starts_at = COALESCE($6, starts_at),
+         ends_at = COALESCE($7, ends_at)
+       WHERE id = $8 AND mall_id = $9 RETURNING *`,
+      [title, description, prizeLabel, entryCostPoints, isActive, startsAt, endsAt, req.params.id, req.mall.id]
+    );
+    await recordAudit({ req, entity: 'raffle', entityId: req.params.id, action: 'update', diff: req.body });
+    res.json({ raffle: rows[0] });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/admin/raffles/:id — yalnızca henüz katılım yoksa (veri kaybını önlemek için)
+router.delete('/raffles/:id', async (req, res, next) => {
+  try {
+    const entryCheck = await query('SELECT count(*)::int AS n FROM raffle_entries WHERE raffle_id = $1', [req.params.id]);
+    if (entryCheck.rows[0].n > 0) {
+      return res.status(409).json({ error: 'Katılımı olan bir çekiliş silinemez; bunun yerine pasifleştirin.' });
+    }
+    const { rowCount } = await query('DELETE FROM raffles WHERE id = $1 AND mall_id = $2', [req.params.id, req.mall.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Çekiliş bulunamadı.' });
+    await recordAudit({ req, entity: 'raffle', entityId: req.params.id, action: 'delete' });
+    res.json({ ok: true });
   } catch (err) { next(err); }
 });
 

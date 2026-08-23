@@ -123,6 +123,23 @@ router.post('/products', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// PATCH /api/store/products/:id — tam düzenleme
+router.patch('/products/:id', async (req, res, next) => {
+  try {
+    const { name, imageUrl, price } = req.body;
+    const { rows } = await query(
+      `UPDATE store_products SET
+         name = COALESCE($1, name),
+         image_url = COALESCE($2, image_url),
+         price = COALESCE($3, price)
+       WHERE id = $4 AND store_id = $5 RETURNING *`,
+      [name, imageUrl, price, req.params.id, myStoreId(req)]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Ürün bulunamadı.' });
+    res.json({ product: rows[0] });
+  } catch (err) { next(err); }
+});
+
 router.delete('/products/:id', async (req, res, next) => {
   try {
     const { rowCount } = await query('DELETE FROM store_products WHERE id = $1 AND store_id = $2', [req.params.id, myStoreId(req)]);

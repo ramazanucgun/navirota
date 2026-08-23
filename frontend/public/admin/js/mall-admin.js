@@ -55,6 +55,7 @@ async function renderView(view) {
     if (view === 'campaigns') return await renderCampaigns();
     if (view === 'ads') return await renderAds();
     if (view === 'popups') return await renderPopups();
+    if (view === 'raffles') return await renderRaffles();
     if (view === 'users') return await renderUsers();
     if (view === 'signage') return await renderSignage();
     if (view === 'integrations') return await renderIntegrations();
@@ -133,6 +134,7 @@ async function renderFloors() {
               <td>${f.node_count}</td>
               <td>${f.store_count}</td>
               <td>
+                <button class="btn btn--ghost btn--sm" data-rename-floor="${f.id}" data-label="${escapeHtml(f.label)}" data-level="${f.level_index}">✏️ Bilgileri Düzenle</button>
                 <button class="btn btn--ghost btn--sm" data-qr-floor="${f.id}">QR Üret</button>
                 <button class="btn btn--gold btn--sm" data-edit-floor="${f.id}">🗺️ Haritayı Düzenle</button>
               </td>
@@ -153,6 +155,19 @@ async function renderFloors() {
       await AdminAuth.api('/api/admin/floors', { method: 'POST', body: { label, levelIndex: Number(levelIndex) } });
       toast('Kat eklendi.'); renderFloors();
     } catch (err) { toast(err.message, true); }
+  });
+
+  document.querySelectorAll('[data-rename-floor]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const label = prompt('Kat adı:', btn.dataset.label);
+      if (label === null) return;
+      const levelIndex = prompt('Seviye numarası:', btn.dataset.level);
+      if (levelIndex === null) return;
+      try {
+        await AdminAuth.api(`/api/admin/floors/${btn.dataset.renameFloor}`, { method: 'PATCH', body: { label, levelIndex: Number(levelIndex) } });
+        toast('Kat bilgileri güncellendi.'); renderFloors();
+      } catch (err) { toast(err.message, true); }
+    });
   });
 
   document.querySelectorAll('[data-qr-floor]').forEach((btn) => {
@@ -444,13 +459,22 @@ async function renderStores() {
               <td>${escapeHtml(s.floor_label)}</td>
               <td>${(s.categories || []).map(escapeHtml).join(', ') || '—'}</td>
               <td>${s.is_active ? '<span class="badge badge--success">Aktif</span>' : '<span class="badge badge--danger">Pasif</span>'}</td>
-              <td><button class="btn btn--ghost btn--sm" data-toggle-store="${s.id}" data-active="${s.is_active}">${s.is_active ? 'Pasifleştir' : 'Aktifleştir'}</button></td>
+              <td style="white-space:nowrap;">
+                <button class="btn btn--ghost btn--sm" data-edit-store="${s.id}">Düzenle</button>
+                <button class="btn btn--ghost btn--sm" data-toggle-store="${s.id}" data-active="${s.is_active}">${s.is_active ? 'Pasifleştir' : 'Aktifleştir'}</button>
+              </td>
             </tr>`).join('')}
         </tbody>
       </table>
     </div>`;
 
   document.getElementById('addStoreBtn').addEventListener('click', () => openStoreForm(floors));
+  document.querySelectorAll('[data-edit-store]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const store = stores.find((s) => s.id === btn.dataset.editStore);
+      openStoreForm(floors, store);
+    });
+  });
   document.querySelectorAll('[data-toggle-store]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const isActive = btn.dataset.active !== 'true';
@@ -460,62 +484,89 @@ async function renderStores() {
   });
 }
 
-function openStoreForm(floors) {
+function openStoreForm(floors, editStore) {
+  const isEdit = Boolean(editStore);
   const scrim = document.createElement('div');
   scrim.className = 'modal-scrim';
   scrim.innerHTML = `
     <div class="modal-card">
-      <div class="modal-card__head"><h3>Yeni Mağaza</h3><button class="btn btn--ghost btn--sm" id="closeModal">✕</button></div>
+      <div class="modal-card__head"><h3>${isEdit ? 'Mağazayı Düzenle' : 'Yeni Mağaza'}</h3><button class="btn btn--ghost btn--sm" id="closeModal">✕</button></div>
       <div class="modal-card__body">
         <div class="form-grid">
-          <div class="field"><label>Mağaza Adı</label><input id="fName" /></div>
-          <div class="field"><label>Slug</label><input id="fSlug" placeholder="orn-magaza" /></div>
+          <div class="field"><label>Mağaza Adı</label><input id="fName" value="${isEdit ? escapeHtml(editStore.name) : ''}" /></div>
+          ${isEdit ? '' : '<div class="field"><label>Slug</label><input id="fSlug" placeholder="orn-magaza" /></div>'}
           <div class="field"><label>Kat</label>
-            <select id="fFloor">${floors.map((f) => `<option value="${f.id}">${escapeHtml(f.label)}</option>`).join('')}</select>
+            <select id="fFloor">${floors.map((f) => `<option value="${f.id}" ${isEdit && f.id === editStore.floor_id ? 'selected' : ''}>${escapeHtml(f.label)}</option>`).join('')}</select>
           </div>
           <div class="field"><label>Giriş Noktası</label>
             <select id="fEntranceNode"><option value="">Yükleniyor…</option></select>
           </div>
-          <div class="field"><label>Ünite No</label><input id="fUnit" /></div>
+          <div class="field"><label>Ünite No</label><input id="fUnit" value="${isEdit ? escapeHtml(editStore.unit_no || '') : ''}" /></div>
+          <div class="field"><label>Telefon</label><input id="fPhone" value="${isEdit ? escapeHtml(editStore.phone || '') : ''}" /></div>
+          <div class="field"><label>Web Sitesi</label><input id="fWebsite" value="${isEdit ? escapeHtml(editStore.website || '') : ''}" /></div>
+          <div class="field"><label>Logo URL</label><input id="fLogo" value="${isEdit ? escapeHtml(editStore.logo_url || '') : ''}" /></div>
+          <div class="field form-grid--full"><label>Açıklama</label><input id="fDesc" value="${isEdit ? escapeHtml(editStore.description || '') : ''}" /></div>
+          <div class="field form-grid--full"><label>Kategoriler (virgülle ayırın, örn. kadin,ayakkabi)</label><input id="fCategories" value="${isEdit ? (editStore.category_codes || []).join(',') : ''}" /></div>
+          ${isEdit ? '' : `
           <div class="field form-grid--full"><label>Yönetici E-postası (opsiyonel)</label><input id="fMgrEmail" type="email" /></div>
-          <div class="field form-grid--full"><label>Yönetici Şifresi (opsiyonel)</label><input id="fMgrPass" type="password" /></div>
+          <div class="field form-grid--full"><label>Yönetici Şifresi (opsiyonel)</label><input id="fMgrPass" type="password" /></div>`}
         </div>
         <p class="muted" style="font-size:12px;margin-top:6px">Giriş noktası listesi boşsa, önce "Katlar &amp; QR" → "Haritayı Düzenle"den bu kata bir "Mağaza Girişi" noktası ekleyin.</p>
-        <button class="btn btn--primary btn--block" id="submitStore" style="margin-top:14px">Mağaza Oluştur</button>
+        <button class="btn btn--primary btn--block" id="submitStore" style="margin-top:14px">${isEdit ? 'Kaydet' : 'Mağaza Oluştur'}</button>
       </div>
     </div>`;
   document.body.appendChild(scrim);
   scrim.addEventListener('click', (e) => { if (e.target === scrim) scrim.remove(); });
   scrim.querySelector('#closeModal').addEventListener('click', () => scrim.remove());
 
-  async function loadEntranceNodes(floorId) {
+  async function loadEntranceNodes(floorId, selectedId) {
     const sel = scrim.querySelector('#fEntranceNode');
     sel.innerHTML = '<option value="">Yükleniyor…</option>';
     try {
       const { entranceNodes } = await AdminAuth.api(`/api/admin/floors/${floorId}/entrance-nodes`);
       sel.innerHTML = entranceNodes.length
-        ? `<option value="">— Seçilmedi (rota hesaplanamaz) —</option>` + entranceNodes.map((n) => `<option value="${n.id}">${escapeHtml(n.code)}</option>`).join('')
+        ? `<option value="">— Seçilmedi (rota hesaplanamaz) —</option>` + entranceNodes.map((n) => `<option value="${n.id}" ${n.id === selectedId ? 'selected' : ''}>${escapeHtml(n.code)}</option>`).join('')
         : `<option value="">Bu katta giriş noktası yok</option>`;
     } catch { sel.innerHTML = '<option value="">Yüklenemedi</option>'; }
   }
-  loadEntranceNodes(floors[0]?.id);
+  loadEntranceNodes(isEdit ? editStore.floor_id : floors[0]?.id, isEdit ? editStore.entrance_node_id : null);
   scrim.querySelector('#fFloor').addEventListener('change', (e) => loadEntranceNodes(e.target.value));
 
   scrim.querySelector('#submitStore').addEventListener('click', async () => {
     try {
-      await AdminAuth.api('/api/admin/stores', {
-        method: 'POST',
-        body: {
-          name: scrim.querySelector('#fName').value,
-          slug: scrim.querySelector('#fSlug').value,
-          floorId: scrim.querySelector('#fFloor').value,
-          entranceNodeId: scrim.querySelector('#fEntranceNode').value || undefined,
-          unitNo: scrim.querySelector('#fUnit').value,
-          managerEmail: scrim.querySelector('#fMgrEmail').value || undefined,
-          managerPassword: scrim.querySelector('#fMgrPass').value || undefined,
-        },
-      });
-      toast('Mağaza oluşturuldu.'); scrim.remove(); renderStores();
+      const categoryCodes = scrim.querySelector('#fCategories').value.split(',').map((c) => c.trim()).filter(Boolean);
+      if (isEdit) {
+        await AdminAuth.api(`/api/admin/stores/${editStore.id}`, {
+          method: 'PATCH',
+          body: {
+            name: scrim.querySelector('#fName').value,
+            floorId: scrim.querySelector('#fFloor').value,
+            entranceNodeId: scrim.querySelector('#fEntranceNode').value || undefined,
+            unitNo: scrim.querySelector('#fUnit').value,
+            phone: scrim.querySelector('#fPhone').value,
+            website: scrim.querySelector('#fWebsite').value,
+            logoUrl: scrim.querySelector('#fLogo').value,
+            description: scrim.querySelector('#fDesc').value,
+            categoryCodes,
+          },
+        });
+        toast('Mağaza güncellendi.');
+      } else {
+        await AdminAuth.api('/api/admin/stores', {
+          method: 'POST',
+          body: {
+            name: scrim.querySelector('#fName').value,
+            slug: scrim.querySelector('#fSlug').value,
+            floorId: scrim.querySelector('#fFloor').value,
+            entranceNodeId: scrim.querySelector('#fEntranceNode').value || undefined,
+            unitNo: scrim.querySelector('#fUnit').value,
+            managerEmail: scrim.querySelector('#fMgrEmail').value || undefined,
+            managerPassword: scrim.querySelector('#fMgrPass').value || undefined,
+          },
+        });
+        toast('Mağaza oluşturuldu.');
+      }
+      scrim.remove(); renderStores();
     } catch (err) { toast(err.message, true); }
   });
 }
@@ -548,11 +599,18 @@ async function renderCampaigns() {
     <div class="panel">
       <div class="panel__head"><h3>Kategori Kampanyaları</h3><button class="btn btn--gold btn--sm" id="addCatCampaign">+ Yeni</button></div>
       <table class="data-table">
-        <thead><tr><th>Kategori</th><th>Başlık</th><th>İndirim</th><th>Bitiş</th></tr></thead>
+        <thead><tr><th>Kategori</th><th>Başlık</th><th>İndirim</th><th>Bitiş</th><th>Durum</th><th></th></tr></thead>
         <tbody>
           ${categoryCampaigns.length ? categoryCampaigns.map((c) => `
-            <tr><td>${escapeHtml(c.category_name)}</td><td>${escapeHtml(c.title)}</td><td>${c.discount_percent ? '%' + c.discount_percent : '—'}</td><td>${fmtDate(c.ends_at)}</td></tr>
-          `).join('') : `<tr><td colspan="4" class="empty-state">Henüz kategori kampanyası yok.</td></tr>`}
+            <tr>
+              <td>${escapeHtml(c.category_name)}</td><td>${escapeHtml(c.title)}</td><td>${c.discount_percent ? '%' + c.discount_percent : '—'}</td><td>${fmtDate(c.ends_at)}</td>
+              <td>${c.is_active ? '<span class="badge badge--success">Aktif</span>' : '<span class="badge badge--danger">Pasif</span>'}</td>
+              <td style="white-space:nowrap;">
+                <button class="btn btn--ghost btn--sm" data-edit-catcamp="${c.id}">Düzenle</button>
+                <button class="btn btn--ghost btn--sm" data-delete-catcamp="${c.id}">Sil</button>
+              </td>
+            </tr>
+          `).join('') : `<tr><td colspan="6" class="empty-state">Henüz kategori kampanyası yok.</td></tr>`}
         </tbody>
       </table>
     </div>`;
@@ -568,24 +626,39 @@ async function renderCampaigns() {
     const { categories } = await AdminAuth.api('/api/admin/categories').catch(() => ({ categories: [] }));
     openCategoryCampaignForm(categories);
   });
+  document.querySelectorAll('[data-edit-catcamp]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const { categories } = await AdminAuth.api('/api/admin/categories').catch(() => ({ categories: [] }));
+      const camp = categoryCampaigns.find((c) => c.id === btn.dataset.editCatcamp);
+      openCategoryCampaignForm(categories, camp);
+    });
+  });
+  document.querySelectorAll('[data-delete-catcamp]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Bu kategori kampanyasını silmek istediğinize emin misiniz?')) return;
+      await AdminAuth.api(`/api/admin/category-campaigns/${btn.dataset.deleteCatcamp}`, { method: 'DELETE' });
+      toast('Kategori kampanyası silindi.'); renderCampaigns();
+    });
+  });
 }
 
-function openCategoryCampaignForm(categories) {
+function openCategoryCampaignForm(categories, editCamp) {
+  const isEdit = Boolean(editCamp);
   const scrim = document.createElement('div');
   scrim.className = 'modal-scrim';
   scrim.innerHTML = `
     <div class="modal-card">
-      <div class="modal-card__head"><h3>Kategori Kampanyası</h3><button class="btn btn--ghost btn--sm" id="closeModal">✕</button></div>
+      <div class="modal-card__head"><h3>${isEdit ? 'Kategori Kampanyasını Düzenle' : 'Kategori Kampanyası'}</h3><button class="btn btn--ghost btn--sm" id="closeModal">✕</button></div>
       <div class="modal-card__body">
         <div class="form-grid">
           <div class="field form-grid--full"><label>Kategori</label>
-            <select id="cCat">${categories.map((c) => `<option value="${c.code}">${escapeHtml(c.name_tr)}</option>`).join('')}</select>
+            <select id="cCat">${categories.map((c) => `<option value="${c.code}" ${isEdit && c.code === editCamp.category_code ? 'selected' : ''}>${escapeHtml(c.name_tr)}</option>`).join('')}</select>
           </div>
-          <div class="field form-grid--full"><label>Başlık</label><input id="cTitle" placeholder="Tüm ayakkabı mağazalarında %20" /></div>
-          <div class="field"><label>İndirim %</label><input id="cDiscount" type="number" /></div>
-          <div class="field"><label>Bitiş Tarihi</label><input id="cEnd" type="date" /></div>
+          <div class="field form-grid--full"><label>Başlık</label><input id="cTitle" value="${isEdit ? escapeHtml(editCamp.title) : ''}" placeholder="Tüm ayakkabı mağazalarında %20" /></div>
+          <div class="field"><label>İndirim %</label><input id="cDiscount" type="number" value="${isEdit ? (editCamp.discount_percent ?? '') : ''}" /></div>
+          <div class="field"><label>Bitiş Tarihi</label><input id="cEnd" type="date" value="${isEdit ? editCamp.ends_at?.slice(0, 10) : ''}" /></div>
         </div>
-        <button class="btn btn--primary btn--block" id="submitCat" style="margin-top:14px">Oluştur</button>
+        <button class="btn btn--primary btn--block" id="submitCat" style="margin-top:14px">${isEdit ? 'Kaydet' : 'Oluştur'}</button>
       </div>
     </div>`;
   document.body.appendChild(scrim);
@@ -593,17 +666,31 @@ function openCategoryCampaignForm(categories) {
   scrim.querySelector('#closeModal').addEventListener('click', () => scrim.remove());
   scrim.querySelector('#submitCat').addEventListener('click', async () => {
     try {
-      await AdminAuth.api('/api/admin/category-campaigns', {
-        method: 'POST',
-        body: {
-          categoryCode: scrim.querySelector('#cCat').value,
-          title: scrim.querySelector('#cTitle').value,
-          discountPercent: Number(scrim.querySelector('#cDiscount').value) || null,
-          startsAt: new Date().toISOString(),
-          endsAt: new Date(scrim.querySelector('#cEnd').value || Date.now() + 30*86400000).toISOString(),
-        },
-      });
-      toast('Kategori kampanyası oluşturuldu.'); scrim.remove(); renderCampaigns();
+      if (isEdit) {
+        await AdminAuth.api(`/api/admin/category-campaigns/${editCamp.id}`, {
+          method: 'PATCH',
+          body: {
+            categoryCode: scrim.querySelector('#cCat').value,
+            title: scrim.querySelector('#cTitle').value,
+            discountPercent: Number(scrim.querySelector('#cDiscount').value) || null,
+            endsAt: scrim.querySelector('#cEnd').value ? new Date(scrim.querySelector('#cEnd').value).toISOString() : undefined,
+          },
+        });
+        toast('Kategori kampanyası güncellendi.');
+      } else {
+        await AdminAuth.api('/api/admin/category-campaigns', {
+          method: 'POST',
+          body: {
+            categoryCode: scrim.querySelector('#cCat').value,
+            title: scrim.querySelector('#cTitle').value,
+            discountPercent: Number(scrim.querySelector('#cDiscount').value) || null,
+            startsAt: new Date().toISOString(),
+            endsAt: new Date(scrim.querySelector('#cEnd').value || Date.now() + 30*86400000).toISOString(),
+          },
+        });
+        toast('Kategori kampanyası oluşturuldu.');
+      }
+      scrim.remove(); renderCampaigns();
     } catch (err) { toast(err.message, true); }
   });
 }
@@ -628,12 +715,30 @@ async function renderAds() {
               <td>${a.clicks}</td>
               <td>%${a.ctr}</td>
               <td>${a.is_active ? '<span class="badge badge--success">Aktif</span>' : '<span class="badge badge--danger">Pasif</span>'}</td>
-              <td><button class="btn btn--ghost btn--sm" data-toggle-ad="${a.id}" data-active="${a.is_active}">${a.is_active ? 'Durdur' : 'Başlat'}</button></td>
+              <td style="white-space:nowrap;">
+                <button class="btn btn--ghost btn--sm" data-edit-ad="${a.id}">Düzenle</button>
+                <button class="btn btn--ghost btn--sm" data-toggle-ad="${a.id}" data-active="${a.is_active}">${a.is_active ? 'Durdur' : 'Başlat'}</button>
+                <button class="btn btn--ghost btn--sm" data-delete-ad="${a.id}">Sil</button>
+              </td>
             </tr>`).join('') : `<tr><td colspan="7" class="empty-state">Henüz reklam yok.</td></tr>`}
         </tbody>
       </table>
     </div>`;
 
+  document.querySelectorAll('[data-edit-ad]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const ad = ads.find((x) => x.id === btn.dataset.editAd);
+      const { slots } = await AdminAuth.api('/api/admin/ad-slots');
+      openAdForm(slots, ad);
+    });
+  });
+  document.querySelectorAll('[data-delete-ad]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Bu reklamı kalıcı olarak silmek istediğinize emin misiniz?')) return;
+      await AdminAuth.api(`/api/admin/ads/${btn.dataset.deleteAd}`, { method: 'DELETE' });
+      toast('Reklam silindi.'); renderAds();
+    });
+  });
   document.querySelectorAll('[data-toggle-ad]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const isActive = btn.dataset.active !== 'true';
@@ -647,28 +752,34 @@ async function renderAds() {
   });
 }
 
-function openAdForm(slots) {
+function openAdForm(slots, editAd) {
+  const isEdit = Boolean(editAd);
   const scrim = document.createElement('div');
   scrim.className = 'modal-scrim';
   scrim.innerHTML = `
     <div class="modal-card">
-      <div class="modal-card__head"><h3>Yeni Reklam</h3><button class="btn btn--ghost btn--sm" id="closeModal">✕</button></div>
+      <div class="modal-card__head"><h3>${isEdit ? 'Reklamı Düzenle' : 'Yeni Reklam'}</h3><button class="btn btn--ghost btn--sm" id="closeModal">✕</button></div>
       <div class="modal-card__body">
         <div class="form-grid">
-          <div class="field"><label>Reklamveren</label><input id="aName" /></div>
-          <div class="field"><label>Alan (Slot)</label>
+          <div class="field"><label>Reklamveren</label><input id="aName" value="${isEdit ? escapeHtml(editAd.advertiser_name || '') : ''}" /></div>
+          ${isEdit ? '' : `<div class="field"><label>Alan (Slot)</label>
             <select id="aSlot">${slots.map((s) => `<option value="${s.code}">${escapeHtml(s.name)}</option>`).join('')}</select>
-          </div>
+          </div>`}
           <div class="field"><label>Tip</label>
-            <select id="aType"><option value="banner">Banner</option><option value="video">Video</option><option value="gif">GIF</option></select>
+            <select id="aType">
+              <option value="banner" ${isEdit && editAd.creative_type === 'banner' ? 'selected' : ''}>Banner</option>
+              <option value="video" ${isEdit && editAd.creative_type === 'video' ? 'selected' : ''}>Video</option>
+              <option value="gif" ${isEdit && editAd.creative_type === 'gif' ? 'selected' : ''}>GIF</option>
+            </select>
           </div>
-          <div class="field"><label>Öncelik</label><input id="aPriority" type="number" value="0" /></div>
-          <div class="field form-grid--full"><label>Görsel/Video URL</label><input id="aUrl" placeholder="https://…" /></div>
-          <div class="field form-grid--full"><label>Tıklama URL (opsiyonel)</label><input id="aClickUrl" placeholder="https://…" /></div>
-          <div class="field"><label>Başlangıç</label><input id="aStart" type="date" /></div>
-          <div class="field"><label>Bitiş</label><input id="aEnd" type="date" /></div>
+          <div class="field"><label>Öncelik</label><input id="aPriority" type="number" value="${isEdit ? editAd.priority : 0}" /></div>
+          <div class="field form-grid--full"><label>Görsel/Video URL</label><input id="aUrl" value="${isEdit ? escapeHtml(editAd.creative_url || '') : ''}" placeholder="https://…" /></div>
+          <div class="field form-grid--full"><label>Tıklama URL (opsiyonel)</label><input id="aClickUrl" value="${isEdit ? escapeHtml(editAd.click_url || '') : ''}" placeholder="https://…" /></div>
+          <div class="field form-grid--full"><label>Hedef Kategoriler (virgülle, boş=tümü)</label><input id="aCategories" value="${isEdit ? (editAd.target_category_codes || []).join(',') : ''}" /></div>
+          <div class="field"><label>Başlangıç</label><input id="aStart" type="date" value="${isEdit ? editAd.starts_at?.slice(0, 10) : ''}" /></div>
+          <div class="field"><label>Bitiş</label><input id="aEnd" type="date" value="${isEdit ? editAd.ends_at?.slice(0, 10) : ''}" /></div>
         </div>
-        <button class="btn btn--primary btn--block" id="submitAd" style="margin-top:14px">Reklamı Yayınla</button>
+        <button class="btn btn--primary btn--block" id="submitAd" style="margin-top:14px">${isEdit ? 'Kaydet' : 'Reklamı Yayınla'}</button>
       </div>
     </div>`;
   document.body.appendChild(scrim);
@@ -676,20 +787,39 @@ function openAdForm(slots) {
   scrim.querySelector('#closeModal').addEventListener('click', () => scrim.remove());
   scrim.querySelector('#submitAd').addEventListener('click', async () => {
     try {
-      await AdminAuth.api('/api/admin/ads', {
-        method: 'POST',
-        body: {
-          advertiserName: scrim.querySelector('#aName').value,
-          slotCode: scrim.querySelector('#aSlot').value,
-          creativeType: scrim.querySelector('#aType').value,
-          creativeUrl: scrim.querySelector('#aUrl').value,
-          clickUrl: scrim.querySelector('#aClickUrl').value || undefined,
-          priority: Number(scrim.querySelector('#aPriority').value) || 0,
-          startsAt: new Date(scrim.querySelector('#aStart').value || Date.now()).toISOString(),
-          endsAt: new Date(scrim.querySelector('#aEnd').value || Date.now() + 30*86400000).toISOString(),
-        },
-      });
-      toast('Reklam oluşturuldu.'); scrim.remove(); renderAds();
+      const targetCategoryCodes = scrim.querySelector('#aCategories').value.split(',').map((c) => c.trim()).filter(Boolean);
+      if (isEdit) {
+        await AdminAuth.api(`/api/admin/ads/${editAd.id}`, {
+          method: 'PATCH',
+          body: {
+            advertiserName: scrim.querySelector('#aName').value,
+            creativeType: scrim.querySelector('#aType').value,
+            creativeUrl: scrim.querySelector('#aUrl').value,
+            clickUrl: scrim.querySelector('#aClickUrl').value || undefined,
+            targetCategoryCodes,
+            priority: Number(scrim.querySelector('#aPriority').value) || 0,
+            startsAt: scrim.querySelector('#aStart').value ? new Date(scrim.querySelector('#aStart').value).toISOString() : undefined,
+            endsAt: scrim.querySelector('#aEnd').value ? new Date(scrim.querySelector('#aEnd').value).toISOString() : undefined,
+          },
+        });
+        toast('Reklam güncellendi.');
+      } else {
+        await AdminAuth.api('/api/admin/ads', {
+          method: 'POST',
+          body: {
+            advertiserName: scrim.querySelector('#aName').value,
+            slotCode: scrim.querySelector('#aSlot').value,
+            creativeType: scrim.querySelector('#aType').value,
+            creativeUrl: scrim.querySelector('#aUrl').value,
+            clickUrl: scrim.querySelector('#aClickUrl').value || undefined,
+            priority: Number(scrim.querySelector('#aPriority').value) || 0,
+            startsAt: new Date(scrim.querySelector('#aStart').value || Date.now()).toISOString(),
+            endsAt: new Date(scrim.querySelector('#aEnd').value || Date.now() + 30*86400000).toISOString(),
+          },
+        });
+        toast('Reklam oluşturuldu.');
+      }
+      scrim.remove(); renderAds();
     } catch (err) { toast(err.message, true); }
   });
 }
@@ -708,16 +838,30 @@ async function renderPopups() {
         <tbody>
           ${popups.length ? popups.map((p) => `
             <tr>
-              <td>${escapeHtml(p.title || '—')}</td>
-              <td>${escapeHtml(p.media_type)}</td>
-              <td>${fmtDate(p.ends_at)}</td>
               <td>${p.is_active ? '<span class="badge badge--success">Aktif</span>' : '<span class="badge badge--danger">Pasif</span>'}</td>
-              <td><button class="btn btn--ghost btn--sm" data-toggle-popup="${p.id}" data-active="${p.is_active}">${p.is_active ? 'Durdur' : 'Başlat'}</button></td>
+              <td style="white-space:nowrap;">
+                <button class="btn btn--ghost btn--sm" data-edit-popup="${p.id}">Düzenle</button>
+                <button class="btn btn--ghost btn--sm" data-toggle-popup="${p.id}" data-active="${p.is_active}">${p.is_active ? 'Durdur' : 'Başlat'}</button>
+                <button class="btn btn--ghost btn--sm" data-delete-popup="${p.id}">Sil</button>
+              </td>
             </tr>`).join('') : `<tr><td colspan="5" class="empty-state">Henüz duyuru yok.</td></tr>`}
         </tbody>
       </table>
     </div>`;
 
+  document.querySelectorAll('[data-edit-popup]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const popup = popups.find((p) => p.id === btn.dataset.editPopup);
+      openPopupForm(popup);
+    });
+  });
+  document.querySelectorAll('[data-delete-popup]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Bu duyuruyu silmek istediğinize emin misiniz?')) return;
+      await AdminAuth.api(`/api/admin/popups/${btn.dataset.deletePopup}`, { method: 'DELETE' });
+      toast('Duyuru silindi.'); renderPopups();
+    });
+  });
   document.querySelectorAll('[data-toggle-popup]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const isActive = btn.dataset.active !== 'true';
@@ -725,26 +869,32 @@ async function renderPopups() {
       toast('Duyuru güncellendi.'); renderPopups();
     });
   });
-  document.getElementById('addPopupBtn').addEventListener('click', openPopupForm);
+  document.getElementById('addPopupBtn').addEventListener('click', () => openPopupForm());
 }
 
-function openPopupForm() {
+function openPopupForm(editPopup) {
+  const isEdit = Boolean(editPopup);
   const scrim = document.createElement('div');
   scrim.className = 'modal-scrim';
   scrim.innerHTML = `
     <div class="modal-card">
-      <div class="modal-card__head"><h3>Yeni Duyuru</h3><button class="btn btn--ghost btn--sm" id="closeModal">✕</button></div>
+      <div class="modal-card__head"><h3>${isEdit ? 'Duyuruyu Düzenle' : 'Yeni Duyuru'}</h3><button class="btn btn--ghost btn--sm" id="closeModal">✕</button></div>
       <div class="modal-card__body">
         <div class="form-grid">
-          <div class="field form-grid--full"><label>Başlık</label><input id="pTitle" /></div>
+          <div class="field form-grid--full"><label>Başlık</label><input id="pTitle" value="${isEdit ? escapeHtml(editPopup.title || '') : ''}" /></div>
           <div class="field"><label>Medya Tipi</label>
-            <select id="pType"><option value="image">Görsel</option><option value="video">Video</option><option value="gif">GIF</option></select>
+            <select id="pType">
+              <option value="image" ${isEdit && editPopup.media_type === 'image' ? 'selected' : ''}>Görsel</option>
+              <option value="video" ${isEdit && editPopup.media_type === 'video' ? 'selected' : ''}>Video</option>
+              <option value="gif" ${isEdit && editPopup.media_type === 'gif' ? 'selected' : ''}>GIF</option>
+            </select>
           </div>
-          <div class="field"><label>Bitiş Tarihi</label><input id="pEnd" type="date" /></div>
-          <div class="field form-grid--full"><label>Medya URL</label><input id="pUrl" placeholder="https://…" /></div>
-          <div class="field form-grid--full"><label>CTA Etiketi (opsiyonel)</label><input id="pCta" placeholder="Detayları Gör" /></div>
+          <div class="field"><label>Bitiş Tarihi</label><input id="pEnd" type="date" value="${isEdit ? editPopup.ends_at?.slice(0, 10) : ''}" /></div>
+          <div class="field form-grid--full"><label>Medya URL</label><input id="pUrl" value="${isEdit ? escapeHtml(editPopup.media_url || '') : ''}" placeholder="https://…" /></div>
+          <div class="field form-grid--full"><label>CTA Etiketi (opsiyonel)</label><input id="pCta" value="${isEdit ? escapeHtml(editPopup.cta_label || '') : ''}" placeholder="Detayları Gör" /></div>
+          <div class="field form-grid--full"><label>CTA URL (opsiyonel)</label><input id="pCtaUrl" value="${isEdit ? escapeHtml(editPopup.cta_url || '') : ''}" placeholder="https://…" /></div>
         </div>
-        <button class="btn btn--primary btn--block" id="submitPopup" style="margin-top:14px">Yayınla</button>
+        <button class="btn btn--primary btn--block" id="submitPopup" style="margin-top:14px">${isEdit ? 'Kaydet' : 'Yayınla'}</button>
       </div>
     </div>`;
   document.body.appendChild(scrim);
@@ -752,18 +902,35 @@ function openPopupForm() {
   scrim.querySelector('#closeModal').addEventListener('click', () => scrim.remove());
   scrim.querySelector('#submitPopup').addEventListener('click', async () => {
     try {
-      await AdminAuth.api('/api/admin/popups', {
-        method: 'POST',
-        body: {
-          title: scrim.querySelector('#pTitle').value,
-          mediaType: scrim.querySelector('#pType').value,
-          mediaUrl: scrim.querySelector('#pUrl').value,
-          ctaLabel: scrim.querySelector('#pCta').value || undefined,
-          startsAt: new Date().toISOString(),
-          endsAt: new Date(scrim.querySelector('#pEnd').value || Date.now() + 14*86400000).toISOString(),
-        },
-      });
-      toast('Duyuru yayınlandı.'); scrim.remove(); renderPopups();
+      if (isEdit) {
+        await AdminAuth.api(`/api/admin/popups/${editPopup.id}`, {
+          method: 'PATCH',
+          body: {
+            title: scrim.querySelector('#pTitle').value,
+            mediaType: scrim.querySelector('#pType').value,
+            mediaUrl: scrim.querySelector('#pUrl').value,
+            ctaLabel: scrim.querySelector('#pCta').value || undefined,
+            ctaUrl: scrim.querySelector('#pCtaUrl').value || undefined,
+            endsAt: scrim.querySelector('#pEnd').value ? new Date(scrim.querySelector('#pEnd').value).toISOString() : undefined,
+          },
+        });
+        toast('Duyuru güncellendi.');
+      } else {
+        await AdminAuth.api('/api/admin/popups', {
+          method: 'POST',
+          body: {
+            title: scrim.querySelector('#pTitle').value,
+            mediaType: scrim.querySelector('#pType').value,
+            mediaUrl: scrim.querySelector('#pUrl').value,
+            ctaLabel: scrim.querySelector('#pCta').value || undefined,
+            ctaUrl: scrim.querySelector('#pCtaUrl').value || undefined,
+            startsAt: new Date().toISOString(),
+            endsAt: new Date(scrim.querySelector('#pEnd').value || Date.now() + 14*86400000).toISOString(),
+          },
+        });
+        toast('Duyuru yayınlandı.');
+      }
+      scrim.remove(); renderPopups();
     } catch (err) { toast(err.message, true); }
   });
 }
@@ -787,11 +954,24 @@ async function renderUsers() {
               <td><span class="badge badge--gold">${u.role === 'mall_admin' ? 'AVM Yöneticisi' : 'Mağaza Yöneticisi'}</span></td>
               <td>${escapeHtml(u.store_name || '—')}</td>
               <td>${u.is_active ? '<span class="badge badge--success">Aktif</span>' : '<span class="badge badge--danger">Pasif</span>'}</td>
-              <td><button class="btn btn--ghost btn--sm" data-toggle-user="${u.id}" data-active="${u.is_active}">${u.is_active ? 'Pasifleştir' : 'Aktifleştir'}</button></td>
+              <td style="white-space:nowrap;">
+                <button class="btn btn--ghost btn--sm" data-edit-user="${u.id}" data-name="${escapeHtml(u.full_name || '')}">Düzenle</button>
+                <button class="btn btn--ghost btn--sm" data-toggle-user="${u.id}" data-active="${u.is_active}">${u.is_active ? 'Pasifleştir' : 'Aktifleştir'}</button>
+              </td>
             </tr>`).join('')}
         </tbody>
       </table>
     </div>`;
+  document.querySelectorAll('[data-edit-user]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const fullName = prompt('Ad Soyad:', btn.dataset.name);
+      if (fullName === null) return;
+      try {
+        await AdminAuth.api(`/api/admin/users/${btn.dataset.editUser}`, { method: 'PATCH', body: { fullName } });
+        toast('Kullanıcı güncellendi.'); renderUsers();
+      } catch (err) { toast(err.message, true); }
+    });
+  });
   document.querySelectorAll('[data-toggle-user]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const isActive = btn.dataset.active !== 'true';
@@ -806,6 +986,124 @@ async function renderUsers() {
     AdminAuth.api('/api/admin/users', { method: 'POST', body: { email, password, fullName, role: 'mall_admin' } })
       .then(() => { toast('Kullanıcı davet edildi.'); renderUsers(); })
       .catch((err) => toast(err.message, true));
+  });
+}
+
+// ---------------------------------------------------------------------
+// ÇEKİLİŞLER
+// ---------------------------------------------------------------------
+async function renderRaffles() {
+  const { raffles } = await AdminAuth.api('/api/admin/raffles');
+  content.innerHTML = `
+    ${header('Çekilişler', 'Sadakat puanı karşılığı katılım alan dijital çekilişler oluşturun ve yönetin.')}
+    <div class="panel">
+      <div class="panel__head"><h3>Çekiliş Listesi</h3><button class="btn btn--gold btn--sm" id="addRaffleBtn">+ Çekiliş Oluştur</button></div>
+      <table class="data-table">
+        <thead><tr><th>Başlık</th><th>Ödül</th><th>Katılım Bedeli</th><th>Katılımcı</th><th>Bitiş</th><th>Durum</th><th></th></tr></thead>
+        <tbody>
+          ${raffles.length ? raffles.map((r) => `
+            <tr>
+              <td><strong>${escapeHtml(r.title)}</strong></td>
+              <td>${escapeHtml(r.prize_label || '—')}</td>
+              <td>${r.entry_cost_points} puan</td>
+              <td>${r.entry_count}</td>
+              <td>${fmtDate(r.ends_at)}</td>
+              <td>${r.drawn_at
+                ? '<span class="badge badge--gold">Kazanan belirlendi</span>'
+                : (r.is_active ? '<span class="badge badge--success">Aktif</span>' : '<span class="badge badge--danger">Pasif</span>')}</td>
+              <td style="white-space:nowrap;">
+                ${r.drawn_at ? '' : `
+                  <button class="btn btn--ghost btn--sm" data-edit-raffle="${r.id}">Düzenle</button>
+                  <button class="btn btn--ghost btn--sm" data-draw-raffle="${r.id}" ${r.entry_count === 0 ? 'disabled' : ''}>Kazananı Çek</button>
+                  <button class="btn btn--ghost btn--sm" data-delete-raffle="${r.id}" ${r.entry_count > 0 ? 'disabled title="Katılımı olan çekiliş silinemez"' : ''}>Sil</button>
+                `}
+              </td>
+            </tr>`).join('') : `<tr><td colspan="7" class="empty-state">Henüz çekiliş yok.</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+
+  document.getElementById('addRaffleBtn').addEventListener('click', () => openRaffleForm());
+  document.querySelectorAll('[data-edit-raffle]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const raffle = raffles.find((r) => r.id === btn.dataset.editRaffle);
+      openRaffleForm(raffle);
+    });
+  });
+  document.querySelectorAll('[data-draw-raffle]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Kazananı rastgele seçmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) return;
+      try {
+        await AdminAuth.api(`/api/admin/raffles/${btn.dataset.drawRaffle}/draw`, { method: 'POST' });
+        toast('Kazanan belirlendi.'); renderRaffles();
+      } catch (err) { toast(err.message, true); }
+    });
+  });
+  document.querySelectorAll('[data-delete-raffle]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (btn.disabled) return;
+      if (!confirm('Bu çekilişi silmek istediğinize emin misiniz?')) return;
+      try {
+        await AdminAuth.api(`/api/admin/raffles/${btn.dataset.deleteRaffle}`, { method: 'DELETE' });
+        toast('Çekiliş silindi.'); renderRaffles();
+      } catch (err) { toast(err.message, true); }
+    });
+  });
+}
+
+function openRaffleForm(editRaffle) {
+  const isEdit = Boolean(editRaffle);
+  const scrim = document.createElement('div');
+  scrim.className = 'modal-scrim';
+  scrim.innerHTML = `
+    <div class="modal-card">
+      <div class="modal-card__head"><h3>${isEdit ? 'Çekilişi Düzenle' : 'Yeni Çekiliş'}</h3><button class="btn btn--ghost btn--sm" id="closeModal">✕</button></div>
+      <div class="modal-card__body">
+        <div class="form-grid">
+          <div class="field form-grid--full"><label>Başlık</label><input id="rTitle" value="${isEdit ? escapeHtml(editRaffle.title) : ''}" /></div>
+          <div class="field form-grid--full"><label>Açıklama</label><input id="rDesc" value="${isEdit ? escapeHtml(editRaffle.description || '') : ''}" /></div>
+          <div class="field"><label>Ödül</label><input id="rPrize" value="${isEdit ? escapeHtml(editRaffle.prize_label || '') : ''}" placeholder="AirPods Pro" /></div>
+          <div class="field"><label>Katılım Bedeli (puan)</label><input id="rCost" type="number" value="${isEdit ? editRaffle.entry_cost_points : 10}" /></div>
+          <div class="field"><label>Başlangıç</label><input id="rStart" type="date" value="${isEdit ? editRaffle.starts_at?.slice(0, 10) : ''}" /></div>
+          <div class="field"><label>Bitiş</label><input id="rEnd" type="date" value="${isEdit ? editRaffle.ends_at?.slice(0, 10) : ''}" /></div>
+        </div>
+        <button class="btn btn--primary btn--block" id="submitRaffle" style="margin-top:14px">${isEdit ? 'Kaydet' : 'Çekiliş Oluştur'}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(scrim);
+  scrim.addEventListener('click', (e) => { if (e.target === scrim) scrim.remove(); });
+  scrim.querySelector('#closeModal').addEventListener('click', () => scrim.remove());
+  scrim.querySelector('#submitRaffle').addEventListener('click', async () => {
+    try {
+      if (isEdit) {
+        await AdminAuth.api(`/api/admin/raffles/${editRaffle.id}`, {
+          method: 'PATCH',
+          body: {
+            title: scrim.querySelector('#rTitle').value,
+            description: scrim.querySelector('#rDesc').value,
+            prizeLabel: scrim.querySelector('#rPrize').value,
+            entryCostPoints: Number(scrim.querySelector('#rCost').value) || 0,
+            startsAt: scrim.querySelector('#rStart').value ? new Date(scrim.querySelector('#rStart').value).toISOString() : undefined,
+            endsAt: scrim.querySelector('#rEnd').value ? new Date(scrim.querySelector('#rEnd').value).toISOString() : undefined,
+          },
+        });
+        toast('Çekiliş güncellendi.');
+      } else {
+        await AdminAuth.api('/api/admin/raffles', {
+          method: 'POST',
+          body: {
+            title: scrim.querySelector('#rTitle').value,
+            description: scrim.querySelector('#rDesc').value,
+            prizeLabel: scrim.querySelector('#rPrize').value,
+            entryCostPoints: Number(scrim.querySelector('#rCost').value) || 0,
+            startsAt: new Date(scrim.querySelector('#rStart').value || Date.now()).toISOString(),
+            endsAt: new Date(scrim.querySelector('#rEnd').value || Date.now() + 14*86400000).toISOString(),
+          },
+        });
+        toast('Çekiliş oluşturuldu.');
+      }
+      scrim.remove(); renderRaffles();
+    } catch (err) { toast(err.message, true); }
   });
 }
 
@@ -844,14 +1142,22 @@ async function renderSignage() {
     <div class="panel">
       <div class="panel__head"><h3>Playlist\'ler</h3><button class="btn btn--gold btn--sm" id="addPlaylist">+ Playlist</button></div>
       <table class="data-table">
-        <thead><tr><th>Ad</th><th>İçerik Sayısı</th></tr></thead>
-        <tbody>${playlists.length ? playlists.map((p) => `<tr><td>${escapeHtml(p.name)}</td><td>${p.item_count}</td></tr>`).join('') : `<tr><td colspan="2" class="empty-state">Henüz playlist yok.</td></tr>`}</tbody>
+        <thead><tr><th>Ad</th><th>İçerik Sayısı</th><th></th></tr></thead>
+        <tbody>${playlists.length ? playlists.map((p) => `
+          <tr>
+            <td>${escapeHtml(p.name)}</td>
+            <td>${p.item_count}</td>
+            <td style="white-space:nowrap;">
+              <button class="btn btn--ghost btn--sm" data-rename-playlist="${p.id}" data-name="${escapeHtml(p.name)}">Yeniden Adlandır</button>
+              <button class="btn btn--ghost btn--sm" data-delete-playlist="${p.id}">Sil</button>
+            </td>
+          </tr>`).join('') : `<tr><td colspan="3" class="empty-state">Henüz playlist yok.</td></tr>`}</tbody>
       </table>
     </div>
     <div class="panel">
       <div class="panel__head"><h3>Ekranlar</h3><button class="btn btn--gold btn--sm" id="addDevice">+ Ekran Ekle</button></div>
       <table class="data-table">
-        <thead><tr><th>Ad</th><th>Eşleştirme Kodu</th><th>Playlist</th><th>Son Görülme</th></tr></thead>
+        <thead><tr><th>Ad</th><th>Eşleştirme Kodu</th><th>Playlist</th><th>Son Görülme</th><th></th></tr></thead>
         <tbody>
           ${devices.length ? devices.map((d) => `
             <tr>
@@ -864,7 +1170,11 @@ async function renderSignage() {
                 </select>
               </td>
               <td>${d.last_seen_at ? fmtDate(d.last_seen_at) : '<span class="badge badge--neutral">Hiç bağlanmadı</span>'}</td>
-            </tr>`).join('') : `<tr><td colspan="4" class="empty-state">Henüz ekran eklenmedi.</td></tr>`}
+              <td style="white-space:nowrap;">
+                <button class="btn btn--ghost btn--sm" data-rename-device="${d.id}" data-name="${escapeHtml(d.name)}" data-location="${escapeHtml(d.location_label || '')}">Düzenle</button>
+                <button class="btn btn--ghost btn--sm" data-delete-device="${d.id}">Sil</button>
+              </td>
+            </tr>`).join('') : `<tr><td colspan="5" class="empty-state">Henüz ekran eklenmedi.</td></tr>`}
         </tbody>
       </table>
     </div>
@@ -877,12 +1187,44 @@ async function renderSignage() {
     await AdminAuth.api('/api/admin/signage/playlists', { method: 'POST', body: { name } });
     toast('Playlist oluşturuldu.'); renderSignage();
   });
+  document.querySelectorAll('[data-rename-playlist]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const name = prompt('Playlist adı:', btn.dataset.name);
+      if (!name) return;
+      await AdminAuth.api(`/api/admin/signage/playlists/${btn.dataset.renamePlaylist}`, { method: 'PATCH', body: { name } });
+      toast('Playlist güncellendi.'); renderSignage();
+    });
+  });
+  document.querySelectorAll('[data-delete-playlist]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Bu playlist\'i silmek istediğinize emin misiniz? Atanmış ekranlardan da kaldırılacaktır.')) return;
+      await AdminAuth.api(`/api/admin/signage/playlists/${btn.dataset.deletePlaylist}`, { method: 'DELETE' });
+      toast('Playlist silindi.'); renderSignage();
+    });
+  });
   document.getElementById('addDevice').addEventListener('click', async () => {
     const name = prompt('Ekran adı (örn: Ana Giriş Ekranı):'); if (!name) return;
     const locationLabel = prompt('Konum etiketi (opsiyonel):') || undefined;
     const r = await AdminAuth.api('/api/admin/signage/devices', { method: 'POST', body: { name, locationLabel } });
     toast(`Ekran oluşturuldu. Eşleştirme kodu: ${r.device.pairing_code}`);
     renderSignage();
+  });
+  document.querySelectorAll('[data-rename-device]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const name = prompt('Ekran adı:', btn.dataset.name);
+      if (name === null) return;
+      const locationLabel = prompt('Konum etiketi:', btn.dataset.location);
+      if (locationLabel === null) return;
+      await AdminAuth.api(`/api/admin/signage/devices/${btn.dataset.renameDevice}`, { method: 'PATCH', body: { name, locationLabel } });
+      toast('Ekran güncellendi.'); renderSignage();
+    });
+  });
+  document.querySelectorAll('[data-delete-device]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Bu ekranı silmek istediğinize emin misiniz?')) return;
+      await AdminAuth.api(`/api/admin/signage/devices/${btn.dataset.deleteDevice}`, { method: 'DELETE' });
+      toast('Ekran silindi.'); renderSignage();
+    });
   });
   document.querySelectorAll('[data-assign-playlist]').forEach((sel) => {
     sel.addEventListener('change', async () => {

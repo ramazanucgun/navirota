@@ -3,6 +3,7 @@ const express = require('express');
 const { query } = require('../../db/pool');
 const { recordAudit } = require('../../services/auditLog');
 const { enforceLimit } = require('../../services/planLimits');
+const { handleDbError } = require('../../services/validation');
 
 const router = express.Router();
 
@@ -35,6 +36,24 @@ router.post('/floors', enforceLimit('floors'), async (req, res, next) => {
     await recordAudit({ req, entity: 'floor', entityId: rows[0].id, action: 'create', diff: req.body });
     res.status(201).json({ floor: rows[0] });
   } catch (err) { next(err); }
+});
+
+// PATCH /api/admin/floors/:id  { label, levelIndex } — temel bilgi düzenleme
+// (harita/graf düzenlemesinden ayrı; bkz. PUT /floors/:id/graph)
+router.patch('/floors/:id', async (req, res, next) => {
+  try {
+    const { label, levelIndex } = req.body;
+    const { rows } = await query(
+      `UPDATE floors SET
+         label = COALESCE($1, label),
+         level_index = COALESCE($2, level_index)
+       WHERE id = $3 AND mall_id = $4 RETURNING *`,
+      [label, levelIndex, req.params.id, req.mall.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Kat bulunamadı.' });
+    await recordAudit({ req, entity: 'floor', entityId: req.params.id, action: 'update', diff: req.body });
+    res.json({ floor: rows[0] });
+  } catch (err) { handleDbError(err, res, next); }
 });
 
 // PATCH /api/admin/floors/:id/svg  { svgUrl } — kat planı yükleme sonrası URL güncelleme

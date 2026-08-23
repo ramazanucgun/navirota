@@ -56,6 +56,22 @@ Her panel API'si kendi **benzersiz path önekine** sahiptir (`/api/admin`, `/api
 
 PRD'nin 4 fazı da tamamlandı ve her biri gerçek bir PostgreSQL örneğine karşı uçtan uca test edildi. Ardından **Faz 5 — Güvenlik Sertleştirme**, **Faz 6 — Ödeme/Abonelik (iyzico)**, **Faz 7 — CI/CD & İzleme**, **Faz 8 — Ölçeklenebilirlik**, **Faz 9 — KVKK Uyumluluğu** ve **Faz 10 — LLM Arama & Webhook Retry** tamamlandı. Denetim raporunda (`NavirotaAVM_Denetim_Raporu.md`) tespit edilen tüm maddeler kapatıldı; kalan geliştirmeler artık gerçek donanım/altyapı gerektiren opsiyonel işler (BLE beacon donanımı, okuma replikası canlı testi).
 
+## Faz 11 — Yönetim Panellerinde Eksik Düzenleme Uçları
+
+Denetim sırasında (kullanıcı geri bildirimiyle) fark edilen bir eksiklik giderildi: mağazalar, katlar ve reklamlar dahil birçok kayıt türü oluşturulduktan sonra **düzenlenemiyordu** (yalnızca aktif/pasif toggle vardı, bazılarında o bile yoktu). Tüm admin panel kaynakları taranıp eksik olan PATCH/DELETE uçları ve karşılık gelen "Düzenle"/"Sil" arayüzleri eklendi — **her biri gerçek bir sunucuya karşı oluştur→düzenle→sil zinciriyle test edildi** (56/56 mevcut test de etkilenmeden geçmeye devam ediyor):
+
+| Alan | Önceki durum | Eklenen |
+|---|---|---|
+| Mağazalar | Yalnızca aktif/pasif | Tam düzenleme: isim, açıklama, logo, telefon, website, kategoriler, kat/giriş noktası |
+| Katlar | Hiç yok | Etiket/seviye düzenleme (harita düzenlemeden ayrı bir "Bilgileri Düzenle") |
+| Reklamlar | Yalnızca aktif/öncelik | Tam düzenleme (reklamveren, görsel, hedef kategoriler, tarihler) + silme |
+| Kategori Kampanyaları | Yalnızca oluşturma | Düzenleme + silme |
+| Duyurular (popup) | Yalnızca aktif/pasif | Tam düzenleme + silme |
+| Kullanıcılar | Yalnızca aktif/pasif | İsim düzenleme |
+| Çekilişler | **Panelde hiç arayüz yoktu** (backend'de bile eksikti) | Tam CRUD + kazanan çekme — yeni bir panel sekmesi olarak eklendi |
+| Signage Playlist/Ekranlar | Yalnızca oluşturma | Yeniden adlandırma + silme |
+| Mağaza Ürünleri (store panel) | Yalnızca oluşturma | Düzenleme |
+
 ## Faz 10 — LLM Arama & Webhook Retry
 
 **56/56 test geçiyor** (53 önceki + 3 yeni). Bu fazda geliştirme sırasında bulunup düzeltilen 2 gerçek hata için ayrıca not düşüldü — sadece kod yazılıp "çalışır" denmedi, gerçek Redis/API'ye karşı test edilerek doğrulandı.

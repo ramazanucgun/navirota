@@ -48,7 +48,7 @@ router.patch('/campaigns/:id/moderate', async (req, res, next) => {
 router.get('/category-campaigns', async (req, res, next) => {
   try {
     const { rows } = await query(
-      `SELECT cc.*, cat.name_tr AS category_name
+      `SELECT cc.*, cat.code AS category_code, cat.name_tr AS category_name
        FROM category_campaigns cc JOIN categories cat ON cat.id = cc.category_id
        WHERE cc.mall_id = $1 ORDER BY cc.created_at DESC`,
       [req.mall.id]
@@ -72,6 +72,45 @@ router.post('/category-campaigns', async (req, res, next) => {
     if (!rows.length) return res.status(400).json({ error: 'Geçersiz kategori kodu.' });
     await recordAudit({ req, entity: 'category_campaign', entityId: rows[0].id, action: 'create', diff: req.body });
     res.status(201).json({ categoryCampaign: rows[0] });
+  } catch (err) { next(err); }
+});
+
+// PATCH /api/admin/category-campaigns/:id — tam düzenleme
+router.patch('/category-campaigns/:id', async (req, res, next) => {
+  try {
+    const { categoryCode, title, description, discountPercent, bannerUrl, isActive, startsAt, endsAt } = req.body;
+    let categoryId;
+    if (categoryCode) {
+      const cat = await query('SELECT id FROM categories WHERE code = $1', [categoryCode]);
+      if (!cat.rows.length) return res.status(400).json({ error: 'Geçersiz kategori kodu.' });
+      categoryId = cat.rows[0].id;
+    }
+    const { rows } = await query(
+      `UPDATE category_campaigns SET
+         category_id = COALESCE($1, category_id),
+         title = COALESCE($2, title),
+         description = COALESCE($3, description),
+         discount_percent = COALESCE($4, discount_percent),
+         banner_url = COALESCE($5, banner_url),
+         is_active = COALESCE($6, is_active),
+         starts_at = COALESCE($7, starts_at),
+         ends_at = COALESCE($8, ends_at)
+       WHERE id = $9 AND mall_id = $10 RETURNING *`,
+      [categoryId, title, description, discountPercent, bannerUrl, isActive, startsAt, endsAt, req.params.id, req.mall.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Kategori kampanyası bulunamadı.' });
+    await recordAudit({ req, entity: 'category_campaign', entityId: req.params.id, action: 'update', diff: req.body });
+    res.json({ categoryCampaign: rows[0] });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/admin/category-campaigns/:id
+router.delete('/category-campaigns/:id', async (req, res, next) => {
+  try {
+    const { rowCount } = await query('DELETE FROM category_campaigns WHERE id = $1 AND mall_id = $2', [req.params.id, req.mall.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Kategori kampanyası bulunamadı.' });
+    await recordAudit({ req, entity: 'category_campaign', entityId: req.params.id, action: 'delete' });
+    res.json({ ok: true });
   } catch (err) { next(err); }
 });
 
@@ -103,14 +142,34 @@ router.post('/popups', async (req, res, next) => {
 
 router.patch('/popups/:id', async (req, res, next) => {
   try {
-    const { isActive } = req.body;
+    const { title, mediaType, mediaUrl, ctaLabel, ctaUrl, showOncePerSession, isActive, startsAt, endsAt } = req.body;
     const { rows } = await query(
-      `UPDATE mall_popups SET is_active = COALESCE($1, is_active) WHERE id = $2 AND mall_id = $3 RETURNING *`,
-      [isActive, req.params.id, req.mall.id]
+      `UPDATE mall_popups SET
+         title = COALESCE($1, title),
+         media_type = COALESCE($2, media_type),
+         media_url = COALESCE($3, media_url),
+         cta_label = COALESCE($4, cta_label),
+         cta_url = COALESCE($5, cta_url),
+         show_once_per_session = COALESCE($6, show_once_per_session),
+         is_active = COALESCE($7, is_active),
+         starts_at = COALESCE($8, starts_at),
+         ends_at = COALESCE($9, ends_at)
+       WHERE id = $10 AND mall_id = $11 RETURNING *`,
+      [title, mediaType, mediaUrl, ctaLabel, ctaUrl, showOncePerSession, isActive, startsAt, endsAt, req.params.id, req.mall.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Popup bulunamadı.' });
     await recordAudit({ req, entity: 'popup', entityId: req.params.id, action: 'update', diff: req.body });
     res.json({ popup: rows[0] });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/admin/popups/:id
+router.delete('/popups/:id', async (req, res, next) => {
+  try {
+    const { rowCount } = await query('DELETE FROM mall_popups WHERE id = $1 AND mall_id = $2', [req.params.id, req.mall.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Popup bulunamadı.' });
+    await recordAudit({ req, entity: 'popup', entityId: req.params.id, action: 'delete' });
+    res.json({ ok: true });
   } catch (err) { next(err); }
 });
 

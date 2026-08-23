@@ -103,6 +103,33 @@ router.post('/signage/playlists', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// PATCH /api/admin/signage/playlists/:id — yeniden adlandırma
+router.patch('/signage/playlists/:id', async (req, res, next) => {
+  try {
+    const { name } = req.body;
+    const { rows } = await query(
+      `UPDATE signage_playlists SET name = COALESCE($1, name) WHERE id = $2 AND mall_id = $3 RETURNING *`,
+      [name, req.params.id, req.mall.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Playlist bulunamadı.' });
+    await recordAudit({ req, entity: 'signage_playlist', entityId: req.params.id, action: 'update', diff: req.body });
+    res.json({ playlist: rows[0] });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/admin/signage/playlists/:id
+router.delete('/signage/playlists/:id', async (req, res, next) => {
+  try {
+    // Bu playlist'e atanmış bir cihaz varsa önce onu boşalt (FK ihlali olmasın).
+    await query('UPDATE signage_devices SET playlist_id = NULL WHERE playlist_id = $1 AND mall_id = $2', [req.params.id, req.mall.id]);
+    await query('DELETE FROM signage_playlist_items WHERE playlist_id = $1', [req.params.id]);
+    const { rowCount } = await query('DELETE FROM signage_playlists WHERE id = $1 AND mall_id = $2', [req.params.id, req.mall.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Playlist bulunamadı.' });
+    await recordAudit({ req, entity: 'signage_playlist', entityId: req.params.id, action: 'delete' });
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 // GET /api/admin/signage/playlists/:id/items
 router.get('/signage/playlists/:id/items', async (req, res, next) => {
   try {

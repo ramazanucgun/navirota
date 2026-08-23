@@ -11,7 +11,9 @@ const router = express.Router();
 router.get('/stores', async (req, res, next) => {
   try {
     const { rows } = await query(
-      `SELECT s.id, s.name, s.slug, s.unit_no, s.is_active, s.phone, f.label AS floor_label,
+      `SELECT s.id, s.name, s.slug, s.description, s.logo_url, s.unit_no, s.is_active, s.phone, s.website,
+              s.floor_id, s.entrance_node_id, f.label AS floor_label,
+              array_agg(DISTINCT cat.code) FILTER (WHERE cat.id IS NOT NULL) AS category_codes,
               array_agg(DISTINCT cat.name_tr) FILTER (WHERE cat.id IS NOT NULL) AS categories
        FROM stores s
        JOIN floors f ON f.id = s.floor_id
@@ -66,22 +68,42 @@ router.post('/stores', enforceLimit('stores'), async (req, res, next) => {
 // PATCH /api/admin/stores/:id — taşı / güncelle / pasifleştir
 router.patch('/stores/:id', async (req, res, next) => {
   try {
-    const { floorId, entranceNodeId, unitNo, isActive, phone, website } = req.body;
+    const {
+      name, description, logoUrl, floorId, entranceNodeId, unitNo,
+      isActive, phone, website, categoryCodes,
+    } = req.body;
     const { rows } = await query(
       `UPDATE stores SET
-         floor_id = COALESCE($1, floor_id),
-         entrance_node_id = COALESCE($2, entrance_node_id),
-         unit_no = COALESCE($3, unit_no),
-         is_active = COALESCE($4, is_active),
-         phone = COALESCE($5, phone),
-         website = COALESCE($6, website)
-       WHERE id = $7 AND mall_id = $8 RETURNING *`,
-      [floorId, entranceNodeId, unitNo, isActive, phone, website, req.params.id, req.mall.id]
+         name = COALESCE($1, name),
+         description = COALESCE($2, description),
+         logo_url = COALESCE($3, logo_url),
+         floor_id = COALESCE($4, floor_id),
+         entrance_node_id = COALESCE($5, entrance_node_id),
+         unit_no = COALESCE($6, unit_no),
+         is_active = COALESCE($7, is_active),
+         phone = COALESCE($8, phone),
+         website = COALESCE($9, website)
+       WHERE id = $10 AND mall_id = $11 RETURNING *`,
+      [name, description, logoUrl, floorId, entranceNodeId, unitNo, isActive, phone, website, req.params.id, req.mall.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Mağaza bulunamadı.' });
+
+    // Kategoriler gönderildiyse (undefined değilse) tamamen yeniden yazılır —
+    // kısmi ekleme/çıkarma değil, "bu mağazanın kategorileri artık bunlar" mantığı.
+    if (Array.isArray(categoryCodes)) {
+      await query('DELETE FROM store_categories WHERE store_id = $1', [req.params.id]);
+      for (const code of categoryCodes) {
+        await query(
+          `INSERT INTO store_categories (store_id, category_id)
+           SELECT $1, id FROM categories WHERE code = $2 ON CONFLICT DO NOTHING`,
+          [req.params.id, code]
+        );
+      }
+    }
+
     await recordAudit({ req, entity: 'store', entityId: req.params.id, action: 'update', diff: req.body });
     res.json({ store: rows[0] });
-  } catch (err) { next(err); }
+  } catch (err) { handleDbError(err, res, next); }
 });
 
 module.exports = router;
