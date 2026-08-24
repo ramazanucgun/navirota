@@ -290,6 +290,26 @@ button { font-family: inherit; }
 }
 .map-controls__btn--reset { font-size: 14px; }
 
+/* Fare ile mağaza üzerine gelindiğinde çıkan hızlı önizleme kartı
+   (yalnızca pointer:fine — gerçek fare — cihazlarda tetiklenir, bkz. map.js). */
+.store-hover-card {
+  position: fixed;
+  z-index: 40;
+  width: 210px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(23,20,15,0.18));
+  padding: 12px 14px;
+  pointer-events: auto;
+  animation: hoverCardIn .12s ease-out;
+}
+.store-hover-card__name { font-weight: 700; font-size: 14px; margin: 0 0 4px; }
+.store-hover-card__campaign { font-size: 12px; color: var(--copper); margin: 0 0 8px; }
+.store-hover-card__actions { display: flex; gap: 6px; }
+.store-hover-card__actions .btn { flex: 1; padding: 7px 10px; font-size: 12.5px; }
+@keyframes hoverCardIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+
 /* SVG içi öğe stilleri (map.js tarafından oluşturulan node'lar için) */
 .mp-corridor-edge { stroke: var(--line-strong); stroke-width: 2; }
 .mp-route-path {

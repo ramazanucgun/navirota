@@ -281,6 +281,47 @@ function renderActiveFloor() {
     startNodeId: startsOnThisFloor ? state.startNode.node_id : null,
   });
   NavirotaMap.onStoreClick(openStoreModal);
+  NavirotaMap.onStoreHover(handleStoreHover);
+}
+
+// ---------------------------------------------------------------------
+// FARE İLE MAĞAZA ÖNİZLEME (yalnızca hover destekleyen cihazlarda)
+// ---------------------------------------------------------------------
+let hoverCardStoreId = null;
+function handleStoreHover(store, clientX, clientY) {
+  const card = document.getElementById('storeHoverCard');
+  if (!store) { card.hidden = true; hoverCardStoreId = null; return; }
+
+  if (store.id !== hoverCardStoreId) {
+    hoverCardStoreId = store.id;
+    const campaign = (store.active_campaigns || [])[0];
+    card.innerHTML = `
+      <p class="store-hover-card__name">${escapeHtml(store.name)}</p>
+      ${campaign ? `<p class="store-hover-card__campaign">🏷️ ${escapeHtml(campaign.title || 'Kampanya')}</p>` : ''}
+      <div class="store-hover-card__actions">
+        <button class="btn btn--gold btn--sm" id="hoverGoBtn">📍 Git</button>
+        <button class="btn btn--ghost btn--sm" id="hoverDetailBtn">Detaylar</button>
+      </div>`;
+    card.querySelector('#hoverGoBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      card.hidden = true; hoverCardStoreId = null;
+      startRouteTo(store.id, store.name);
+    });
+    card.querySelector('#hoverDetailBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      card.hidden = true; hoverCardStoreId = null;
+      openStoreModal(store.id);
+    });
+  }
+
+  // Kart, imlecin sağ-üstünde konumlanır; ekran kenarından taşarsa sola/aşağı çevrilir.
+  const cardW = 220, cardH = card.offsetHeight || 100;
+  let left = clientX + 14, top = clientY - cardH - 10;
+  if (left + cardW > window.innerWidth) left = clientX - cardW - 14;
+  if (top < 8) top = clientY + 18;
+  card.style.left = `${left}px`;
+  card.style.top = `${top}px`;
+  card.hidden = false;
 }
 
 // ---------------------------------------------------------------------

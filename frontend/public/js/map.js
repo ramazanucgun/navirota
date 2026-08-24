@@ -9,6 +9,7 @@ const NavirotaMap = (() => {
   let currentViewBox = { x: 0, y: 0, w: 1000, h: 600 };
   let baseViewBox = { ...currentViewBox };
   let onStoreClick = null;
+  let onStoreHover = null;
   let arrowAnimFrame = null;
 
   function setViewBox(vb) {
@@ -82,6 +83,7 @@ const NavirotaMap = (() => {
       const points = poly.map((p) => p.join(',')).join(' ');
       const shape = el('polygon', { points, class: 'mp-store', 'data-store-id': s.id });
       shape.addEventListener('click', () => onStoreClick && onStoreClick(s.id));
+      attachHoverHandlers(shape, s);
       storeLayer.appendChild(shape);
 
       const cx = poly.reduce((a, p) => a + p[0], 0) / poly.length;
@@ -90,6 +92,7 @@ const NavirotaMap = (() => {
       label.textContent = s.name;
       label.style.cursor = 'pointer';
       label.addEventListener('click', () => onStoreClick && onStoreClick(s.id));
+      attachHoverHandlers(label, s);
       storeLayer.appendChild(label);
 
       if (s.active_campaigns && s.active_campaigns.length) {
@@ -122,6 +125,26 @@ const NavirotaMap = (() => {
       startLayer.appendChild(el('circle', { cx: start.x, cy: start.y, r: 7, class: 'mp-start-dot' }));
       svg.appendChild(startLayer);
     }
+  }
+
+  // Fare (mouse) ile bir mağazanın üzerine gelindiğinde çağrılır — dokunmatik
+  // (touch) cihazlarda hover kavramı olmadığından ve orada zaten tek dokunuş
+  // doğrudan mağaza detayını açtığından (bkz. onStoreClick), yalnızca gerçek
+  // fare imleci (pointerType === 'mouse') için tetiklenir; böylece mobilde
+  // dokunma davranışı hiç etkilenmez.
+  function attachHoverHandlers(node, store) {
+    node.addEventListener('pointerenter', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      onStoreHover && onStoreHover(store, e.clientX, e.clientY);
+    });
+    node.addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      onStoreHover && onStoreHover(store, e.clientX, e.clientY);
+    });
+    node.addEventListener('pointerleave', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      onStoreHover && onStoreHover(null);
+    });
   }
 
   function badgeGlyph(badge) {
@@ -220,6 +243,7 @@ const NavirotaMap = (() => {
     zoomOut: () => zoom(1.25),
     resetZoom,
     onStoreClick: (fn) => { onStoreClick = fn; },
+    onStoreHover: (fn) => { onStoreHover = fn; },
   };
 })();
 

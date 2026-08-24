@@ -222,12 +222,13 @@ const EDGE_TYPES = [['walk', 'Yürüyüş'], ['elevator', 'Asansör'], ['escalat
 let editorState = null; // { floorId, nodes:[{code,type,x,y,accessible}], edges:[{fromCode,toCode,weight,edgeType}], mode, pendingEdgeFrom, svgContent, viewbox }
 
 async function renderFloorEditor(floorId) {
-  const { floor, nodes, edges } = await AdminAuth.api(`/api/admin/floors/${floorId}/graph`);
+  const { floor, nodes, edges, stores } = await AdminAuth.api(`/api/admin/floors/${floorId}/graph`);
   editorState = {
     floorId, nodes: nodes || [], edges: edges || [],
     mode: 'select', pendingEdgeFrom: null,
     svgContent: floor.svgContent || null,
     viewbox: (floor.viewbox || '0 0 1000 600').split(' ').map(Number),
+    stores: stores || [], drawingPolygon: [], polygonStoreId: null,
   };
 
   content.innerHTML = `
@@ -245,6 +246,7 @@ async function renderFloorEditor(floorId) {
               <option value="select">Seç / Sil</option>
               <option value="add-node">+ Nokta Ekle</option>
               <option value="add-edge">🔗 İki Noktayı Bağla</option>
+              <option value="add-store-polygon">🏬 Mağaza Alanı Çiz</option>
             </select>
           </div>
           <div class="field">
@@ -253,6 +255,11 @@ async function renderFloorEditor(floorId) {
           </div>
         </div>
         <div id="editorHint" class="muted" style="margin-bottom:10px;font-size:13px"></div>
+        <div id="polygonToolbar" style="margin-bottom:10px;display:none">
+          <button class="btn btn--gold btn--sm" id="finishPolygonBtn">✓ Poligonu Bitir ve Mağazaya Ata</button>
+          <button class="btn btn--ghost btn--sm" id="cancelPolygonBtn">✕ Vazgeç</button>
+          <span class="muted" style="font-size:12px;margin-left:8px" id="polygonPointCount"></span>
+        </div>
         <div style="position:relative;border:1px solid var(--line-strong);border-radius:12px;overflow:hidden;background:#fff">
           <svg id="editorSvg" viewBox="${editorState.viewbox.join(' ')}" style="width:100%;height:520px;cursor:crosshair;display:block"></svg>
         </div>
@@ -264,13 +271,25 @@ async function renderFloorEditor(floorId) {
         <button class="btn btn--primary btn--sm" id="saveGraphBtn">💾 Kaydet</button>
       </div>
       <div class="panel__body" id="graphSummary"></div>
+    </div>
+    <div class="panel">
+      <div class="panel__head"><h3>Mağaza Alanları (${editorState.stores.filter(s => s.polygon).length}/${editorState.stores.length} tanımlı)</h3></div>
+      <div class="panel__body" id="storePolygonSummary"></div>
     </div>`;
 
   document.getElementById('backToFloors').addEventListener('click', renderFloors);
   document.getElementById('editorMode').addEventListener('change', (e) => {
     editorState.mode = e.target.value;
     editorState.pendingEdgeFrom = null;
+    editorState.drawingPolygon = [];
+    document.getElementById('polygonToolbar').style.display = editorState.mode === 'add-store-polygon' ? 'block' : 'none';
     updateEditorHint();
+    drawEditorCanvas();
+  });
+  document.getElementById('finishPolygonBtn').addEventListener('click', finishStorePolygon);
+  document.getElementById('cancelPolygonBtn').addEventListener('click', () => {
+    editorState.drawingPolygon = [];
+    drawEditorCanvas();
   });
   document.getElementById('svgFileInput').addEventListener('change', handleSvgUpload);
   document.getElementById('saveGraphBtn').addEventListener('click', saveGraph);
@@ -278,6 +297,7 @@ async function renderFloorEditor(floorId) {
   updateEditorHint();
   drawEditorCanvas();
   renderGraphSummary();
+  renderStorePolygonSummary();
 }
 
 function updateEditorHint() {
@@ -285,6 +305,7 @@ function updateEditorHint() {
     select: 'Bir noktaya tıklayıp "Sil" ile kaldırabilirsiniz.',
     'add-node': 'Haritada bir noktaya tıklayın — kod ve tip soracağız.',
     'add-edge': 'Birbirine bağlamak istediğiniz iki noktayı sırayla tıklayın.',
+    'add-store-polygon': 'Arka plandaki mağazanın köşelerini sırayla tıklayın (en az 3 nokta), sonra "Poligonu Bitir" ile hangi mağazaya ait olduğunu seçin.',
   };
   document.getElementById('editorHint').textContent = hints[editorState.mode] || '';
 }
@@ -304,6 +325,27 @@ function drawEditorCanvas() {
     const g = el('g', { opacity: '0.3' });
     g.innerHTML = editorState.svgContent.replace(/<\/?svg[^>]*>/g, '');
     svg.appendChild(g);
+  }
+
+  // Daha önce tanımlanmış mağaza alanları (yarı saydam dolgu + isim)
+  (editorState.stores || []).forEach((s) => {
+    if (!s.polygon || !s.polygon.length) return;
+    const points = s.polygon.map((p) => p.join(',')).join(' ');
+    svg.appendChild(el('polygon', { points, fill: 'rgba(199,154,62,0.18)', stroke: '#C79A3E', 'stroke-width': 2 }));
+    const cx = s.polygon.reduce((a, p) => a + p[0], 0) / s.polygon.length;
+    const cy = s.polygon.reduce((a, p) => a + p[1], 0) / s.polygon.length;
+    const label = el('text', { x: cx, y: cy, 'font-size': 11, fill: '#8C4A1D', 'font-family': 'sans-serif', 'text-anchor': 'middle' });
+    label.textContent = s.name;
+    svg.appendChild(label);
+  });
+
+  // Şu an çizilmekte olan poligon (mağaza alanı çizim modu)
+  if (editorState.mode === 'add-store-polygon' && editorState.drawingPolygon.length) {
+    const pts = editorState.drawingPolygon;
+    if (pts.length > 1) {
+      svg.appendChild(el('polyline', { points: pts.map((p) => p.join(',')).join(' '), fill: 'none', stroke: '#B5652C', 'stroke-width': 2, 'stroke-dasharray': '4,3' }));
+    }
+    pts.forEach((p) => svg.appendChild(el('circle', { cx: p[0], cy: p[1], r: 5, fill: '#B5652C', stroke: '#fff', 'stroke-width': 1.5 })));
   }
 
   // Kenarlar
@@ -330,12 +372,58 @@ function drawEditorCanvas() {
   });
 
   svg.onclick = (ev) => {
-    if (editorState.mode !== 'add-node') return;
-    const pt = svg.createSVGPoint();
-    pt.x = ev.clientX; pt.y = ev.clientY;
-    const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
-    addNodeAt(Math.round(loc.x), Math.round(loc.y));
+    if (editorState.mode === 'add-node') {
+      const pt = svg.createSVGPoint();
+      pt.x = ev.clientX; pt.y = ev.clientY;
+      const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+      addNodeAt(Math.round(loc.x), Math.round(loc.y));
+      return;
+    }
+    if (editorState.mode === 'add-store-polygon') {
+      const pt = svg.createSVGPoint();
+      pt.x = ev.clientX; pt.y = ev.clientY;
+      const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+      editorState.drawingPolygon.push([Math.round(loc.x), Math.round(loc.y)]);
+      document.getElementById('polygonPointCount').textContent = `${editorState.drawingPolygon.length} nokta yerleştirildi`;
+      drawEditorCanvas();
+    }
   };
+}
+
+async function finishStorePolygon() {
+  if (editorState.drawingPolygon.length < 3) {
+    toast('En az 3 nokta gerekli (bir alan tanımlamak için).', true);
+    return;
+  }
+  const storeNames = editorState.stores.map((s, i) => `${i + 1}) ${s.name}${s.polygon ? ' (mevcut alanı değiştirilecek)' : ''}`).join('\n');
+  const choice = prompt(`Bu alanı hangi mağazaya atayalım?\n${storeNames}`, '1');
+  const store = editorState.stores[Number(choice) - 1];
+  if (!store) { toast('Geçersiz seçim, iptal edildi.', true); return; }
+  try {
+    await AdminAuth.api(`/api/admin/stores/${store.id}`, { method: 'PATCH', body: { polygon: editorState.drawingPolygon } });
+    store.polygon = editorState.drawingPolygon;
+    editorState.drawingPolygon = [];
+    document.getElementById('polygonPointCount').textContent = '';
+    toast(`"${store.name}" için alan kaydedildi.`);
+    drawEditorCanvas();
+    renderStorePolygonSummary();
+  } catch (err) { toast(err.message, true); }
+}
+
+function renderStorePolygonSummary() {
+  const box = document.getElementById('storePolygonSummary');
+  if (!box) return;
+  const stores = editorState.stores || [];
+  box.innerHTML = `
+    <table class="data-table">
+      <thead><tr><th>Mağaza</th><th>Alan Durumu</th></tr></thead>
+      <tbody>${stores.length ? stores.map((s) => `
+        <tr>
+          <td>${escapeHtml(s.name)}</td>
+          <td>${s.polygon ? `<span class="badge badge--success">Tanımlı (${s.polygon.length} nokta)</span>` : '<span class="badge badge--neutral">Tanımlanmadı — otomatik küçük alan kullanılıyor</span>'}</td>
+        </tr>`).join('') : '<tr><td colspan="2" class="empty-state">Bu katta mağaza yok.</td></tr>'}</tbody>
+    </table>
+    <p class="muted" style="font-size:12px;margin-top:8px">Alanı tanımlanmayan mağazalar, ziyaretçi haritasında giriş noktası etrafında küçük bir kutu olarak gösterilir. Gerçek mağaza sınırını çizmek için üstteki "Mağaza Alanı Çiz" modunu kullanın.</p>`;
 }
 
 function addNodeAt(x, y) {

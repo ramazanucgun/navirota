@@ -56,6 +56,18 @@ Her panel API'si kendi **benzersiz path önekine** sahiptir (`/api/admin`, `/api
 
 PRD'nin 4 fazı da tamamlandı ve her biri gerçek bir PostgreSQL örneğine karşı uçtan uca test edildi. Ardından **Faz 5 — Güvenlik Sertleştirme**, **Faz 6 — Ödeme/Abonelik (iyzico)**, **Faz 7 — CI/CD & İzleme**, **Faz 8 — Ölçeklenebilirlik**, **Faz 9 — KVKK Uyumluluğu** ve **Faz 10 — LLM Arama & Webhook Retry** tamamlandı. Denetim raporunda (`NavirotaAVM_Denetim_Raporu.md`) tespit edilen tüm maddeler kapatıldı; kalan geliştirmeler artık gerçek donanım/altyapı gerektiren opsiyonel işler (BLE beacon donanımı, okuma replikası canlı testi).
 
+## Faz 12 — Gerçek Kat Planı Üzerinde Mağaza Alanları & Hover Önizleme
+
+Kullanıcının paylaştığı gerçek bir AVM zemin kat SVG'siyle test edildi (`docs/ornek-zemin-kat.svg` benzeri bir dosya — 208x165mm, 380 path, isimli mağazalar: Guess, Jepublic, Ecrou, Vatan Computer, vb.). Bu tür gerçek mimari SVG'lerde mağaza isimleri path'e dönüştürülmüş metin olduğundan (CorelDraw çıktısı, `<text>` elemanı yok) ve her mağaza için ayrı bir kimlik taşımadığından, poligonları **otomatik çıkarmak mümkün değil** — bu yüzden AVM yöneticisinin haritada mağaza sınırlarını elle çizip ilgili mağaza kaydına atayabileceği bir araç eklendi.
+
+| Bileşen | Açıklama |
+|---|---|
+| Admin kat editörü — "🏬 Mağaza Alanı Çiz" modu | Yüklenen gerçek SVG arka plan üzerinde köşe köşe tıklanarak bir poligon çizilir, "Poligonu Bitir" ile hangi mağazaya ait olduğu seçilip kaydedilir. Tanımlı alanlar editörde soluk turuncu dolgu ile önizlenir; panelin altında hangi mağazaların alanının tanımlı olduğunu gösteren bir özet tablo var. |
+| `stores.polygon` alanı artık düzenlenebilir | Daha önce yalnızca DB'de duran, hiçbir uçtan yazılamayan bir alandı — `PATCH /api/admin/stores/:id` ve `GET /api/admin/floors/:id/graph` üzerinden tam okunur/yazılır yapıldı. Gerçek bir sunucuya karşı test edildi: poligon kaydedildi, `/graph` endpoint'inden aynı poligon geri okundu. |
+| Ziyaretçi haritasında fare ile önizleme (`store-hover-card`) | Bir mağazanın üzerine fare ile gelindiğinde (yalnızca gerçek fare/`pointerType==='mouse'` — dokunmatik cihazlarda mevcut "dokun → detay aç" davranışı hiç değişmedi) küçük bir kart belirir: mağaza adı, varsa aktif kampanya, **"📍 Git"** (doğrudan rota başlatır) ve **"Detaylar"** (tam mağaza kartını açar) butonları. |
+
+Gerçek `zemin.svg` dosyası bir kata yüklenip uçtan uca doğrulandı: viewBox otomatik algılandı, `svg_content` veritabanına yazıldı, ziyaretçi `/floors` endpoint'i bu içeriği doğru döndürdü. Test/demo verisi teslim öncesi temizlendi (`svg_content`/`polygon` alanları `NULL`'a döndürüldü) — kendi gerçek kat planınızı yüklemek için admin panelinde "Katlar &amp; QR" → "Haritayı Düzenle" → dosya seçici kullanılır.
+
 ## Faz 11 — Yönetim Panellerinde Eksik Düzenleme Uçları
 
 Denetim sırasında (kullanıcı geri bildirimiyle) fark edilen bir eksiklik giderildi: mağazalar, katlar ve reklamlar dahil birçok kayıt türü oluşturulduktan sonra **düzenlenemiyordu** (yalnızca aktif/pasif toggle vardı, bazılarında o bile yoktu). Tüm admin panel kaynakları taranıp eksik olan PATCH/DELETE uçları ve karşılık gelen "Düzenle"/"Sil" arayüzleri eklendi — **her biri gerçek bir sunucuya karşı oluştur→düzenle→sil zinciriyle test edildi** (56/56 mevcut test de etkilenmeden geçmeye devam ediyor):

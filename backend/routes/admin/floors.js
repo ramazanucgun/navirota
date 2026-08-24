@@ -132,10 +132,16 @@ router.get('/floors/:id/graph', async (req, res, next) => {
       weight: e.weight, edgeType: e.edgeType, bidirectional: e.bidirectional,
     })).filter((e) => e.fromCode && e.toCode);
 
+    const storesRes = await query(
+      `SELECT id, name, polygon, entrance_node_id AS "entranceNodeId" FROM stores WHERE floor_id = $1 ORDER BY name`,
+      [req.params.id]
+    );
+
     res.json({
       floor: floorCheck.rows[0],
       nodes: nodesRes.rows.map(({ id, ...rest }) => rest),
       edges,
+      stores: storesRes.rows,
     });
   } catch (err) { next(err); }
 });

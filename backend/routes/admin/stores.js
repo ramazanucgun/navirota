@@ -12,7 +12,7 @@ router.get('/stores', async (req, res, next) => {
   try {
     const { rows } = await query(
       `SELECT s.id, s.name, s.slug, s.description, s.logo_url, s.unit_no, s.is_active, s.phone, s.website,
-              s.floor_id, s.entrance_node_id, f.label AS floor_label,
+              s.floor_id, s.entrance_node_id, s.polygon, f.label AS floor_label,
               array_agg(DISTINCT cat.code) FILTER (WHERE cat.id IS NOT NULL) AS category_codes,
               array_agg(DISTINCT cat.name_tr) FILTER (WHERE cat.id IS NOT NULL) AS categories
        FROM stores s
@@ -70,7 +70,7 @@ router.patch('/stores/:id', async (req, res, next) => {
   try {
     const {
       name, description, logoUrl, floorId, entranceNodeId, unitNo,
-      isActive, phone, website, categoryCodes,
+      isActive, phone, website, categoryCodes, polygon,
     } = req.body;
     const { rows } = await query(
       `UPDATE stores SET
@@ -82,9 +82,11 @@ router.patch('/stores/:id', async (req, res, next) => {
          unit_no = COALESCE($6, unit_no),
          is_active = COALESCE($7, is_active),
          phone = COALESCE($8, phone),
-         website = COALESCE($9, website)
-       WHERE id = $10 AND mall_id = $11 RETURNING *`,
-      [name, description, logoUrl, floorId, entranceNodeId, unitNo, isActive, phone, website, req.params.id, req.mall.id]
+         website = COALESCE($9, website),
+         polygon = COALESCE($10, polygon)
+       WHERE id = $11 AND mall_id = $12 RETURNING *`,
+      [name, description, logoUrl, floorId, entranceNodeId, unitNo, isActive, phone, website,
+        polygon ? JSON.stringify(polygon) : null, req.params.id, req.mall.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Mağaza bulunamadı.' });
 
